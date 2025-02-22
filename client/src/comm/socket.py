@@ -1,10 +1,12 @@
 from socket import AF_INET, SOCK_DGRAM, socket, timeout, error
 from uuid import uuid4
-
+import asyncio
+import uuid
 from src.comm.parser import Parser
+# https://docs.python.org/3/library/asyncio-protocol.html#udp-echo-client
+# https://chatgpt.com/share/67b8abae-a814-800e-9047-4a495ae4d247
 
-
-class Socket():
+class Socket(asyncio.DatagramProtocol):
     def __init__(self):
         pass
 
@@ -43,8 +45,10 @@ class AtLeastOnceSocket(Socket):
         obj.pop("request_id")
         return obj
 
-    def receive(self) -> any:
-        pass
+    def datagram_received(self, data, addr):
+        request_id = uuid.UUID(bytes=data[:16])
+
+        obj = self.parser.unmarshall(data, recv_obj_name)
 
     def close(self):
         self.socket.close()
