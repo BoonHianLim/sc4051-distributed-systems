@@ -1,0 +1,16 @@
+[
+    {
+        "name": "fruit",
+        "fields": [
+            {
+                "fruit_id": "int"
+            },
+            {
+                "name": "str"
+            },
+            {
+                "price": "float"
+            }
+        ]
+    }
+]
