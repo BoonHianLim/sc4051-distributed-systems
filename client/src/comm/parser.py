@@ -2,6 +2,8 @@ import struct
 from uuid import UUID
 import uuid
 
+from src.comm.object import BaseModel
+
 
 class Parser():
     """
@@ -15,7 +17,7 @@ class Parser():
         marshall(obj_name: str, item: any, request_id: UUID) -> bytes:
     """
 
-    def __init__(self, schema: any):
+    def __init__(self, schema: any, services_schema: any):
         self.data = {}
 
         for obj in schema:
@@ -25,7 +27,15 @@ class Parser():
             self.data[obj['name']]['fields'] = [(list(field.keys())[0], list(
                 field.values())[0]) for field in obj['fields']]
 
-    def unmarshall(self, recv_bytes: bytes, obj_name: str) -> dict:
+        self.services = {}
+        for obj in services_schema:
+            obj_id: int = obj['id']
+            self.services[obj_id] = {}
+            self.services[obj_id]['name'] = obj['name']
+            self.services[obj_id]['request'] = obj['request']
+            self.services[obj_id]['response'] = obj['response']
+
+    def unmarshall(self, recv_bytes: bytes) -> dict:
         """
         Unmarshalls the received bytes into a dictionary object based on the specified object name.
         Args:
@@ -38,14 +48,19 @@ class Parser():
             struct.error: If there is an error unpacking the float value.
         """
 
-        data_format = self.data[obj_name]
+        obj = {}
+        request_id = uuid.UUID(bytes=recv_bytes[:16])
 
+        service_id = int.from_bytes(recv_bytes[16:18], byteorder='big')
+
+        is_request = recv_bytes[18] == 0
+        data_format = self.data[self.services[service_id]
+                                ["request" if is_request else "response"]]
+
+        bytes_ptr = 19
         fields = data_format["fields"]
         fields_ptr = 0
 
-        obj = {}
-        request_id = uuid.UUID(bytes=recv_bytes[:16])
-        bytes_ptr = 16
         while bytes_ptr < len(recv_bytes) and fields_ptr < len(fields):
             field_name, field_type = fields[fields_ptr]
             match field_type:
@@ -67,16 +82,21 @@ class Parser():
                         ">f", recv_bytes[bytes_ptr:bytes_ptr+4])[0]
                     obj[field_name] = _value
                     bytes_ptr += 4
+                case "bool":
+                    _value = recv_bytes[bytes_ptr] == 1
+                    obj[field_name] = _value
+                    bytes_ptr += 1
             fields_ptr += 1
         obj["request_id"] = request_id
+        obj["service_id"] = service_id 
+        obj["is_request"] = is_request
         return obj
 
-    def marshall(self, obj_name: str, item: any, request_id: UUID) -> bytes:
+    def marshall(self, request_id: UUID, service_id: int, is_request: bool, item: BaseModel) -> bytes:
         """
         Marshalls the given object into a byte stream according to the specified format.
         Args:
-            obj_name (str): The name of the object type to be marshalled.
-            item (any): The object to be marshalled, represented as a dictionary. 
+            item (BaseModel): The object to be marshalled, represented as a dictionary. 
             Else, it can be a class instance with attributes corresponding to the fields.
             This can be done by implementing __dict__ or __getitem__ method in the class.
             request_id (UUID): The unique identifier for the request.
@@ -84,12 +104,15 @@ class Parser():
             bytes: The marshalled byte stream representing the object.
         """
 
-        data_format = self.data[obj_name]
+        data_format = self.data[item.obj_name]
 
         fields = data_format['fields']
         fields_ptr = 0
 
         generated_bytes = request_id.bytes
+        generated_bytes += service_id.to_bytes(2, byteorder='big')
+        generated_bytes += (0 if is_request else 1).to_bytes(1, byteorder='big')
+
         while fields_ptr < len(fields):
             field_name, field_type = fields[fields_ptr]
             match field_type:
@@ -102,5 +125,7 @@ class Parser():
                     generated_bytes += _value
                 case "float":
                     generated_bytes += struct.pack(">f", item[field_name])
+                case "bool":
+                    generated_bytes += (1 if item[field_name] else 0).to_bytes(1, byteorder='big')
             fields_ptr += 1
         return generated_bytes

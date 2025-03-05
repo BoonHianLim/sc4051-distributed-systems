@@ -1,0 +1,8 @@
+[
+    {
+        "id": 1, 
+        "name": "server_service_1",
+        "request": "fruit",
+        "response": "fruit"
+    }
+]

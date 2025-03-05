@@ -43,10 +43,4 @@ while True:
     else:
         socket = AtLeastOnceSocket(parser)
     socket.listen()
-    request_id = uuid4()
-    request = Person("Biboo", 18, 142, False)
-    response = socket.send(request, 1, True)
-    logger.info(response)
-    time.sleep(2)
-    socket.close()
-    at_least_once = not at_least_once
+    
