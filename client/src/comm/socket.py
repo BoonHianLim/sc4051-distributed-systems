@@ -31,12 +31,12 @@ class AtLeastOnceSocket(Socket):
         self.timeout_seconds = timeout_seconds
         self.addr = (ip_addr, port)
 
-    def send(self, message: any, service_id: int, is_request: bool) -> any:
+    def send(self, message: any, service_id: int, is_request: bool, server_addr: str = "127.0.0.1", port: int = 12000) -> any:
         request_id = uuid4()
         msg_in_bytes = self.parser.marshall(
             request_id, service_id, is_request, message)
 
-        addr = ("127.0.0.1", 12000)
+        addr = (server_addr, port)
         while True:
             self.socket.sendto(msg_in_bytes, addr)
 
