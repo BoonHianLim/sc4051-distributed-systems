@@ -47,5 +47,5 @@ def setup_logger(std_debug_level: int = logging.INFO, file_debug_level: int = lo
     file_handler.setFormatter(formatter)
     logging.basicConfig(
         handlers=[stdout_handler, file_handler],
-        level=logging.INFO)
+        level=min(std_debug_level, file_debug_level))
     logger.info("Logger is up.")
