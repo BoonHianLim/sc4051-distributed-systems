@@ -1,0 +1,19 @@
+[
+    { 
+        "name": "Person",
+        "fields": [
+            {
+                "name": "str"
+            },
+            {
+                "age": "int"
+            },
+            {
+                "height": "float"
+            },
+            {
+                "is_singaporean": "bool"
+            }
+        ]
+    }
+]
