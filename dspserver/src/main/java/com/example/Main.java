@@ -1,5 +1,7 @@
 package com.example;
 
+import java.util.Map;
+
 public class Main {
     public static void main(String[] args) throws Exception {
 
@@ -10,7 +12,11 @@ public class Main {
         System.out.println("Server is running at " + PORT_NUMBER);
 
         while (true) {
-            socket.receive(receiveBuffer);
+            SenderResult senderResult = socket.receive(receiveBuffer);
+            System.out.println("Unmarshalled data");
+            Map<String, Object> result = senderResult.getResult();
+            result.forEach((key, value) -> System.out.println(key + ": " + value));
+            socket.send(result, senderResult.getSenderIpAddress(), senderResult.getSenderPort());
         }
     }
 }

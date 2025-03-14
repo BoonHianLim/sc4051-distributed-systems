@@ -157,8 +157,8 @@ public class Parser {
      * @param item The object to be marshalled
      * @return The marshalled byte array
      */
-    public byte[] marshall(UUID requestId, int serviceId, boolean isRequest, BaseModel item) {
-        DataFormat dataFormat = data.get(item.obj_name);
+    public byte[] marshall(UUID requestId, int serviceId, boolean isRequest, String objName, Map<String, Object> item) {
+        DataFormat dataFormat = data.get(objName);
         
         // Calculate the size of the resulting byte array
         int size = 16 + 2 + 1; // UUID (16 bytes) + service ID (2 bytes) + is_request flag (1 byte)

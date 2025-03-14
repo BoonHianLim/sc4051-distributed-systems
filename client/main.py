@@ -39,13 +39,13 @@ class Person(BaseModel):
 at_least_once = True
 while True:
     if at_least_once:
-        socket = AtLeastOnceSocket(parser)
+        socket = AtLeastOnceSocket(parser, port=12000)
     else:
-        socket = AtLeastOnceSocket(parser)
+        socket = AtLeastOnceSocket(parser, port=12000)
     socket.listen()
     request_id = uuid4()
     request = Person("Biboo", 18, 142, False)
-    response = socket.send(request, 1, True)
+    response = socket.send(request, 1, True, port=11999)
     logger.info(response)
     time.sleep(2)
     socket.close()
