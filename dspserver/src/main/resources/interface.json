@@ -1,18 +1,54 @@
 [
-    { 
-        "name": "Person",
+    {
+        "name": "ListAvailabilityReq",
         "fields": [
             {
-                "name": "str"
+                "facilityName": "str"
             },
             {
-                "age": "int"
+                "days": "str" 
+            }
+        ]
+    },
+    {
+        "name": "ListAvailabilityResp",
+        "fields": [
+            {
+                "availabilities": "str"
+            }
+        ]
+    },
+    {
+        "name": "BookFacilityReq",
+        "fields": [
+            {
+                "facilityName": "str"
             },
             {
-                "height": "float"
+                "startDay": "int"
             },
             {
-                "is_singaporean": "bool"
+                "startHour": "int"
+            },
+            {
+                "startMinute": "int"
+            },
+            {
+                "endDay": "int"
+            },
+            {
+                "endHour": "int"
+            },
+            {
+                "endMinute": "int"
+            }
+        ]
+    },
+    {
+        "name": "BookFacilityResp",
+        "fields": [
+            {
+                "confirmationID": "str"
             }
         ]
     }

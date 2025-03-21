@@ -2,7 +2,7 @@ import struct
 from uuid import UUID
 import uuid
 
-from src.comm.object import BaseModel
+from src.comm.types import BaseModel
 
 
 class Parser():

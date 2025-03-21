@@ -2,7 +2,7 @@ import json
 import os
 import unittest
 import uuid
-from src.comm.object import BaseModel
+from src.comm.types import BaseModel
 from src.comm import parser
 
 
