@@ -1,82 +1,166 @@
 package com.example;
 
-import java.util.Arrays;
+import java.time.DayOfWeek;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.format.TextStyle;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class TimeSlotDecoder {
-    private String startDay;
-    private String endDay;
-    private int startHour;
-    private int endHour;
-    private int startMin;
-    private int endMin;
-    private int durationMinutes;
-
-    // Map
     public static final Map<String, Integer> DAY_TO_INDEX = Map.of(
-        "Mon", 0,
-        "Tue", 1,
-        "Wed", 2,
-        "Thu", 3,
-        "Fri", 4,
-        "Sat", 5,
-        "Sun", 6
-    );
+            "Mon", 0,
+            "Tue", 1,
+            "Wed", 2,
+            "Thu", 3,
+            "Fri", 4,
+            "Sat", 5,
+            "Sun", 6);
 
-    // Constructor
-    public TimeSlotDecoder (String input)
-    {
-        parseInput(input);
-        calculateDuration();
+    private static final Map<String, DayOfWeek> DAY_TO_ENUM = Map.of(
+            "Mon", DayOfWeek.MONDAY,
+            "Tue", DayOfWeek.TUESDAY,
+            "Wed", DayOfWeek.WEDNESDAY,
+            "Thu", DayOfWeek.THURSDAY,
+            "Fri", DayOfWeek.FRIDAY,
+            "Sat", DayOfWeek.SATURDAY,
+            "Sun", DayOfWeek.SUNDAY);
+
+    private final DayOfWeek startDay;
+    private final DayOfWeek endDay;
+    private final int startHour;
+    private final int endHour;
+    private final int startMin;
+    private final int endMin;
+    private final int durationMinutes;
+
+    public TimeSlotDecoder(String input) {
+        String[] times = parseTimeSlot(input);
+        TimePoint start = parseTimePoint(times[0]);
+        TimePoint end = parseTimePoint(times[1]);
+
+        this.startDay = start.day;
+        this.startHour = start.hour;
+        this.startMin = start.minute;
+
+        this.endDay = end.day;
+        this.endHour = end.hour;
+        this.endMin = end.minute;
+
+        this.durationMinutes = calculateDuration(start, end);
     }
 
-    public void parseInput(String input)
-    {
+    private String[] parseTimeSlot(String input) {
         String[] parts = input.split(" - ");
-        if (parts.length != 2)
-        {
-            throw new IllegalArgumentException("Invalid input format: " + input);
+        if (parts.length != 2) {
+            throw new IllegalArgumentException(
+                    "Invalid input format. Expected 'Day,Hour,Minute - Day,Hour,Minute' but got: " + input);
         }
-
-        String[] startParts = parts[0].split(",");
-        String[] endParts = parts[1].split(",");
-
-        if (startParts.length != 3 || endParts.length != 3) {
-            throw new IllegalArgumentException("Invalid time format in input: " + input);
-        }
-
-        startDay = startParts[0];
-        startHour = Integer.parseInt(startParts[1]);
-        startMin = Integer.parseInt(startParts[2]);
-
-        endDay = endParts[0];
-        endHour = Integer.parseInt(endParts[1]);
-        endMin = Integer.parseInt(endParts[2]);
+        return parts;
     }
 
-    private void calculateDuration()
-    {
-        int startTotalMinutes = DAY_TO_INDEX.get(startDay) * 24 * 60 + startHour * 60 + startMin;
-        int endTotalMinutes = DAY_TO_INDEX.get(endDay) * 24 * 60 + endHour * 60 + endMin;
+    private TimePoint parseTimePoint(String timePoint) {
+        String[] parts = timePoint.split(",");
+        if (parts.length != 3) {
+            throw new IllegalArgumentException("Invalid time format. Expected 'Day,Hour,Minute' but got: " + timePoint);
+        }
 
-        durationMinutes = endTotalMinutes - startTotalMinutes;
+        String day = parts[0];
+        if (!DAY_TO_ENUM.containsKey(day)) {
+            throw new IllegalArgumentException("Invalid day: " + day);
+        }
 
-        if (durationMinutes < 0)
-        {
-            throw new IllegalArgumentException("End time must be after start time.");   
+        try {
+            int hour = Integer.parseInt(parts[1]);
+            int minute = Integer.parseInt(parts[2]);
+
+            if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+                throw new IllegalArgumentException(
+                        String.format("Invalid time values. Hours must be 0-23, minutes must be 0-59. Got: %d:%d", hour,
+                                minute));
+            }
+
+            return new TimePoint(DAY_TO_ENUM.get(day), hour, minute);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Hour and minute must be integers: " + timePoint, e);
         }
     }
 
+    private int calculateDuration(TimePoint start, TimePoint end) {
+        LocalDateTime startDateTime = LocalDateTime.of(2023, 1, start.day.getValue(), start.hour, start.minute);
+        LocalDateTime endDateTime = LocalDateTime.of(2023, 1, end.day.getValue(), end.hour, end.minute);
+
+        // Adjust for week wrap-around
+        if (endDateTime.isBefore(startDateTime)) {
+            endDateTime = endDateTime.plusDays(7);
+        }
+
+        Duration duration = Duration.between(startDateTime, endDateTime);
+        int minutes = (int) duration.toMinutes();
+
+        if (minutes < 0) {
+            throw new IllegalArgumentException("End time must be after start time.");
+        }
+
+        return minutes;
+    }
+
+    public List<Object> getDecodedTimeSlot() {
+        return List.of(
+                startDay.toString().substring(0, 3),
+                startHour,
+                startMin,
+                endDay.toString().substring(0, 3),
+                endHour,
+                endMin,
+                durationMinutes);
+    }
+
+    @Override
     public String toString() {
         return getDecodedTimeSlot().toString();
     }
 
-    public List<Object> getDecodedTimeSlot() {
-        return Arrays.asList(
-            startDay, startHour, startMin,
-            endDay, endHour, endMin,
-            durationMinutes
-        );
+    // Getters
+    public String getStartDay() {
+        return startDay.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+    }
+
+    public String getEndDay() {
+        return endDay.getDisplayName(TextStyle.SHORT, Locale.ENGLISH);
+    }
+
+    public int getStartHour() {
+        return startHour;
+    }
+
+    public int getEndHour() {
+        return endHour;
+    }
+
+    public int getStartMin() {
+        return startMin;
+    }
+
+    public int getEndMin() {
+        return endMin;
+    }
+
+    public int getDurationMinutes() {
+        return durationMinutes;
+    }
+
+    // Helper class for internal use
+    private static class TimePoint {
+        final DayOfWeek day;
+        final int hour;
+        final int minute;
+
+        TimePoint(DayOfWeek day, int hour, int minute) {
+            this.day = day;
+            this.hour = hour;
+            this.minute = minute;
+        }
     }
 }
