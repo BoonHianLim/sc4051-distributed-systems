@@ -48,12 +48,6 @@ public class Booking {
         // Create reference week starting with Monday
         LocalDateTime baseDateTime = LocalDateTime.of(2025, 1, 6, 0, 0);
 
-        System.out.println("Start Day: " + startDay);
-        System.out.println("Start Time: " + startHour + ":" + startMin);
-
-        System.out.println("End Day: " + endDay);
-        System.out.println("End Time: " + endHour + ":" + endMin);
-
         // Calculate the day offsets based on the day names
         int startDayOffset = TimeSlotDecoder.DAY_TO_INDEX.get(startDay);
         int endDayOffset = TimeSlotDecoder.DAY_TO_INDEX.get(endDay);
