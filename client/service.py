@@ -26,7 +26,7 @@ with open(inteface_path, "r", encoding="utf-8") as f:
 with open(services_path, "r", encoding="utf-8") as f:
     services_schema = json.load(f)
 parser: Parser = Parser(interface_schema, services_schema)
-socket: Socket = AtLeastOnceSocket(parser, port=12000)
+socket: Socket = AtLeastOnceSocket(parser)
 at_least_once = True
 
 print(r'''
@@ -86,7 +86,7 @@ while True:
                 logger.info("User confirmed query.")
                 print("Sending query request...")
                 request = ListAvailabilityReq(facility_name, result)
-                response = socket.send(request, 1, True, port=11999)
+                response = socket.send(request, 1, True)
                 logger.info(response)
                 print("Query successful!")
             else:
@@ -110,14 +110,16 @@ while True:
                 "Enter the end minute (0–59):", "int", min_val=0, max_val=59)
             logger.info(
                 f"User entered: {facility_name}, {start_day}, {start_hour}, {start_minute}, {end_day}, {end_hour}, {end_minute}")
+            days_str = ['Mon', 'Tue',
+                        'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+            time_slot =  f"{days_str[start_day - 1]},{start_hour},{start_minute} - {days_str[end_day - 1]},{end_hour},{end_minute}"
             user_confirmation = safe_input(
-                f"You have selected to booking {facility_name} from {start_day} {start_hour}:{start_minute} to {end_day} {end_hour}:{end_minute}. Press 1 to continue.", "bool")
+                f"You have selected to booking {facility_name} for time_slot {time_slot}. Press 1 to continue.", "int")
             if user_confirmation == 1:
                 logger.info("User confirmed booking.")
                 print("Sending booking request...")
-                request = BookFacilityReq(facility_name, start_day, start_hour,
-                                          start_minute, end_day, end_hour, end_minute)
-                response = socket.send(request, 2, True, port=11999)
+                request = BookFacilityReq(facility_name, time_slot)
+                response = socket.send(request, 2, True)
                 logger.info(response)
                 print("Booking successful!")
             else:
@@ -138,7 +140,7 @@ while True:
                 logger.info("User confirmed change.")
                 print("Sending change request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response = socket.send(request, 3, True, port=11999)
+                response = socket.send(request, 3, True)
                 logger.info(response)
                 print("Change successful!")
             else:
@@ -160,7 +162,7 @@ while True:
                 print("Sending listen request...")
                 request = RegisterCallbackReq(
                     facility_name, monitoring_period_in_minutes)
-                response = socket.send(request, 4, True, port=11999)
+                response = socket.send(request, 4, True)
                 logger.info(response)
                 print("Listening successful!")
             else:
@@ -178,7 +180,7 @@ while True:
                 logger.info("User confirmed cancel.")
                 print("Sending cancel request...")
                 request = CancelBookingReq(confirmation_id)
-                response = socket.send(request, 5, True, port=11999)
+                response = socket.send(request, 5, True)
                 logger.info(response)
                 print("Cancel successful!")
             else:
@@ -199,7 +201,7 @@ while True:
                 logger.info("User confirmed extend.")
                 print("Sending extend request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response = socket.send(request, 6, True, port=11999)
+                response = socket.send(request, 6, True)
                 logger.info(response)
                 print("Extend successful!")
             else:

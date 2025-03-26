@@ -59,8 +59,8 @@ public class BookingServiceTest {
     @Test
     public void testListAvailabilityWithValidInput() {
         // First make sure we have some bookings
-        bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "John Doe");
-        bookingService.bookFacility("Gym", "Tue,14,0 - Tue,15,0", "Jane Smith");
+        bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
+        bookingService.bookFacility("Gym", "Tue,14,0 - Tue,15,0");
         
         // Test listing availability
         List<String> result = bookingService.listAvailability("Gym", "Mon, Tue");
@@ -71,41 +71,41 @@ public class BookingServiceTest {
     @Test
     public void testBookFacility() {
         // Book a facility with valid inputs
-        String result = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "John Doe");
+        String result = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
         assertTrue(result.contains("Booking confirmed"));
         
         // Should not allow empty facility name
-        result = bookingService.bookFacility("", "Mon,10,0 - Mon,11,0", "John Doe");
+        result = bookingService.bookFacility("", "Mon,10,0 - Mon,11,0");
         assertTrue(result.startsWith("Error:"));
         
         // Should not allow empty time slot
-        result = bookingService.bookFacility("Gym", "", "John Doe");
+        result = bookingService.bookFacility("Gym", "");
         assertTrue(result.startsWith("Error:"));
         
         // Should not allow empty client name
-        result = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "");
+        result = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
         assertTrue(result.startsWith("Error:"));
         
         // Should not allow booking non-existing facility
-        result = bookingService.bookFacility("NonExistingFacility", "Mon,10,0 - Mon,11,0", "John Doe");
+        result = bookingService.bookFacility("NonExistingFacility", "Mon,10,0 - Mon,11,0");
         assertTrue(result.startsWith("Error:"));
         
         // Should not allow double booking the same time slot
-        result = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "Jane Smith");
+        result = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
         assertTrue(result.startsWith("Error:"));
     }
     
     @Test
     public void testEditBooking() {
         // First, book a facility
-        String bookingResult = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "John Doe");
+        String bookingResult = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
         String confirmationId = bookingResult.substring(bookingResult.lastIndexOf(":") + 2);
         
         // Test shifting the booking by 30 minutes
         assertTrue(bookingService.editBooking(confirmationId, 30));
         
         // Book another slot that would overlap if we tried to shift the first booking again
-        bookingService.bookFacility("Gym", "Mon,11,30 - Mon,12,30", "Jane Smith");
+        bookingService.bookFacility("Gym", "Mon,11,30 - Mon,12,30");
         
         // Should fail because the new time slot would overlap with an existing booking
         assertThrows(RuntimeException.class, () -> bookingService.editBooking(confirmationId, 30));
@@ -117,7 +117,7 @@ public class BookingServiceTest {
     @Test
     public void testCancelBookingByConfirmationId() {
         // First, book a facility
-        String bookingResult = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "John Doe");
+        String bookingResult = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
         String confirmationId = bookingResult.substring(bookingResult.lastIndexOf(":") + 2);
         
         // Test cancelling the booking
@@ -139,14 +139,14 @@ public class BookingServiceTest {
     @Test
     public void testExtendBooking() {
         // First, book a facility
-        String bookingResult = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "John Doe");
+        String bookingResult = bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
         String confirmationId = bookingResult.substring(bookingResult.lastIndexOf(":") + 2);
         
         // Test extending the booking by 15 minutes - should work
         assertTrue(bookingService.extendBooking(confirmationId, 15));
         
         // Book another slot that would overlap if we tried to extend the first booking further
-        bookingService.bookFacility("Gym", "Mon,11,30 - Mon,12,30", "Jane Smith");
+        bookingService.bookFacility("Gym", "Mon,11,30 - Mon,12,30");
         
         // Now try extending it further - should fail because it would overlap with Jane's booking
         assertThrows(IllegalStateException.class, () -> bookingService.extendBooking(confirmationId, 30));
@@ -164,8 +164,8 @@ public class BookingServiceTest {
         assertEquals(0, bookingService.getAllBookings().size());
         
         // Add a few bookings
-        bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0", "John Doe");
-        bookingService.bookFacility("Swimming Pool", "Tue,14,0 - Tue,15,0", "Jane Smith");
+        bookingService.bookFacility("Gym", "Mon,10,0 - Mon,11,0");
+        bookingService.bookFacility("Swimming Pool", "Tue,14,0 - Tue,15,0");
         
         // Should have 2 bookings now
         assertEquals(2, bookingService.getAllBookings().size());

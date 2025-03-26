@@ -48,7 +48,7 @@ public class AtLeastOnceSocket extends CustomSocket {
         
         try {
             // Create message and marshal it
-            Parser.Message parsedMessage = createMessage(message, serviceId, isRequest);
+            Parser.Message parsedMessage = createMessage(message, serviceId, requestId, isRequest);
             byte[] data = parser.marshall(parsedMessage);
             
             // Store pending message for retransmission

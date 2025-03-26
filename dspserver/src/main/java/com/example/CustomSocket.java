@@ -158,7 +158,7 @@ public abstract class CustomSocket implements AutoCloseable {
      * @return A Parser.Message object ready for marshalling
      * @throws Exception If the service ID is not found or the format is invalid
      */
-    protected Parser.Message createMessage(Map<String, Object> data, int serviceId, boolean isRequest) 
+    protected Parser.Message createMessage(Map<String, Object> data, int serviceId, UUID requestId, boolean isRequest) 
             throws Exception {
         List<Map<String, Object>> servicesSchema = loadJSONSchema("services.json");
         
@@ -173,8 +173,6 @@ public abstract class CustomSocket implements AutoCloseable {
         if (formatName == null) {
             throw new IllegalArgumentException("Service ID not found: " + serviceId);
         }
-        
-        UUID requestId = (UUID) data.getOrDefault("request_id", UUID.randomUUID());
         
         // Remove metadata fields that aren't part of the actual payload
         Map<String, Object> payloadData = new java.util.HashMap<>(data);

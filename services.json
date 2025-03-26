@@ -40,5 +40,11 @@
         "name":"ExtendBooking",
         "request": "ExtendBookingReq",
         "response": "ExtendBookingResp"
+    },
+    {
+        "id": 8,
+        "name": "SocketSwitching",
+        "request": "SocketSwitchingReq",
+        "response": "SocketSwitchingResp"
     }
 ]
