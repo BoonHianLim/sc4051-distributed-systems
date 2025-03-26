@@ -87,19 +87,15 @@ public class BookingService {
      * 
      * @param facilityName the name of the facility
      * @param timeSlot the time slot to book
-     * @param clientName the name of the client making the booking
      * @return the confirmation ID or an error message
      */
-    public String bookFacility(String facilityName, String timeSlot, String clientName) {
+    public String bookFacility(String facilityName, String timeSlot) {
         // Validate input
         if (facilityName == null || facilityName.isEmpty()) {
             return "Error: Facility name cannot be empty";
         }
         if (timeSlot == null || timeSlot.isEmpty()) {
             return "Error: Time slot cannot be empty";
-        }
-        if (clientName == null || clientName.isEmpty()) {
-            return "Error: Client name cannot be empty";
         }
 
         // Find the facility by name
@@ -120,14 +116,14 @@ public class BookingService {
 
         try {
             // Create a new booking
-            Booking booking = new Booking(facilityName, timeSlot, clientName);
+            Booking booking = new Booking(facilityName, timeSlot);
             
             // Add the booking to the facility
             boolean added = facility.addBooking(booking);
             
             if (added) {
                 // Return the confirmation ID
-                return "Booking confirmed. Your confirmation ID is: " + booking.getConfirmationID();
+                return booking.getConfirmationID();
             } else {
                 return "Error: Failed to add booking";
             }
