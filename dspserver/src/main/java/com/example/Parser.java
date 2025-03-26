@@ -9,9 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-
 /**
- * A system for serializing and deserializing structured data according to a schema.
+ * A system for serializing and deserializing structured data according to a
+ * schema.
  */
 public class Parser {
     private final Map<String, DataFormat> dataFormats;
@@ -33,7 +33,7 @@ public class Parser {
      */
     private Map<String, DataFormat> initializeDataFormats(List<Map<String, Object>> schema) {
         Map<String, DataFormat> result = new HashMap<>();
-        
+
         for (Map<String, Object> obj : schema) {
             String name = (String) obj.get("name");
             @SuppressWarnings("unchecked")
@@ -48,7 +48,7 @@ public class Parser {
 
             result.put(name, new DataFormat(name, fieldTypes));
         }
-        
+
         return result;
     }
 
@@ -57,7 +57,7 @@ public class Parser {
      */
     private Map<Integer, ServiceInfo> initializeServices(List<Map<String, Object>> servicesSchema) {
         Map<Integer, ServiceInfo> result = new HashMap<>();
-        
+
         for (Map<String, Object> obj : servicesSchema) {
             Integer id = (Integer) obj.get("id");
             String name = (String) obj.get("name");
@@ -66,7 +66,7 @@ public class Parser {
 
             result.put(id, new ServiceInfo(name, request, response));
         }
-        
+
         return result;
     }
 
@@ -99,7 +99,7 @@ public class Parser {
         if (bytes.length != 16) {
             throw new IllegalArgumentException("Invalid UUID bytes: expected 16 bytes but got " + bytes.length);
         }
-        
+
         ByteBuffer buffer = ByteBuffer.wrap(bytes);
         buffer.order(ByteOrder.BIG_ENDIAN);
 
@@ -126,7 +126,8 @@ public class Parser {
      * 
      * @param bytes The received bytes to be unmarshalled
      * @return A Map containing the unmarshalled data
-     * @throws IllegalArgumentException if the service ID is not found or the format is invalid
+     * @throws IllegalArgumentException if the service ID is not found or the format
+     *                                  is invalid
      */
     public Message unmarshall(byte[] bytes) {
         Map<String, Object> data = new HashMap<>();
@@ -147,7 +148,7 @@ public class Parser {
         if (serviceInfo == null) {
             throw new IllegalArgumentException("Unknown service ID: " + serviceId);
         }
-        
+
         if (isRequest == RequestType.ERROR || isRequest == RequestType.LOST) {
             throw new IllegalArgumentException("Received error response");
         }
@@ -194,6 +195,16 @@ public class Parser {
      * @throws IllegalArgumentException if the format name is not found
      */
     public byte[] marshall(Message message) {
+        if (message.getRequestType() == RequestType.REQUEST || message.getRequestType() == RequestType.LOST) {
+            return marshalNormal(message);
+        } else if (message.getRequestType() == RequestType.ERROR) {
+            return marshalError(message);
+        } else {
+            throw new IllegalArgumentException("Unsupported request type: " + message.getRequestType());
+        }
+    }
+
+    private byte[] marshalNormal(Message message) {
         DataFormat dataFormat = dataFormats.get(message.getFormatName());
         if (dataFormat == null) {
             throw new IllegalArgumentException("Unknown data format: " + message.getFormatName());
@@ -201,7 +212,7 @@ public class Parser {
 
         // Calculate buffer size
         int size = calculateBufferSize(dataFormat, message.getData());
-        
+
         // Allocate buffer
         ByteBuffer buffer = ByteBuffer.allocate(size);
         buffer.order(ByteOrder.BIG_ENDIAN);
@@ -210,17 +221,29 @@ public class Parser {
         buffer.put(marshalUUID(message.getRequestId()));
         buffer.putShort((short) message.getServiceId());
         buffer.put((byte) message.getRequestType().getCode());
-        if (message.getRequestType() == RequestType.REQUEST || message.getRequestType() == RequestType.LOST) {
-            // Write fields
-            for (FieldType field : dataFormat.fields) {
-                writeField(buffer, field.name, field.type, message.getData());
-            }
-        } else if (message.getRequestType() == RequestType.ERROR) {
-            String errorMessage = (String) message.getData().get("errorMessage");
-            byte[] strBytes = errorMessage.getBytes(StandardCharsets.UTF_8);
-            buffer.putShort((short) strBytes.length);
-            buffer.put(strBytes);
+        for (FieldType field : dataFormat.fields) {
+            writeField(buffer, field.name, field.type, message.getData());
         }
+
+        return buffer.array();
+    }
+
+    private byte[] marshalError(Message message) {
+        int size = 16 + 2 + 1
+                + message.getData().get("errorMessage").toString().getBytes(StandardCharsets.UTF_8).length;
+        System.out.println(size);
+        // Allocate buffer
+        ByteBuffer buffer = ByteBuffer.allocate(size);
+        buffer.order(ByteOrder.BIG_ENDIAN);
+
+        // Write header
+        buffer.put(marshalUUID(message.getRequestId()));
+        buffer.putShort((short) message.getServiceId());
+        buffer.put((byte) message.getRequestType().getCode());
+
+        String errorMessage = (String) message.getData().get("errorMessage");
+        byte[] strBytes = errorMessage.getBytes(StandardCharsets.UTF_8);
+        buffer.put(strBytes);
 
         return buffer.array();
     }
@@ -253,7 +276,7 @@ public class Parser {
                     throw new IllegalArgumentException("Unsupported field type: " + fieldType);
             }
         }
-        
+
         return size;
     }
 
@@ -334,7 +357,8 @@ public class Parser {
         private final String formatName;
         private final Map<String, Object> data;
 
-        public Message(UUID requestId, int serviceId, RequestType requestType, String formatName, Map<String, Object> data) {
+        public Message(UUID requestId, int serviceId, RequestType requestType, String formatName,
+                Map<String, Object> data) {
             this.requestId = requestId;
             this.serviceId = serviceId;
             this.requestType = requestType;
