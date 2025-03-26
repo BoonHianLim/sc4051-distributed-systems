@@ -1,8 +1,20 @@
 [
     {
         "id": 1, 
-        "name": "server_service_1",
-        "request": "Person",
-        "response": "Person"
+        "name": "ListAvailability",
+        "request": "ListAvailabilityReq",
+        "response": "ListAvailabilityResp"
+    },
+    {
+        "id": 2,
+        "name": "BookFacility",
+        "request": "BookFacilityReq",
+        "response": "BookFacilityResp"
+    },
+    {
+        "id": 9999,
+        "name": "Test",
+        "request": "BookFacilityResp",
+        "response": "BookFacilityResp"
     }
 ]
