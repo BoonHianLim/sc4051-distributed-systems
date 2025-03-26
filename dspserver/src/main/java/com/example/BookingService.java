@@ -1,5 +1,6 @@
 package com.example;
 
+import java.net.InetAddress;
 import java.util.*;
 
 public class BookingService {
@@ -293,6 +294,23 @@ public class BookingService {
             throw new RuntimeException("Failed to extend booking: " + e.getMessage(), e);
         }
     }
+
+    public boolean registerClient(String facilityName, int monitorPeriodinMinutes, int port, InetAddress clientAddress) {
+
+        MonitoringClient tempClient = new MonitoringClient(clientAddress, port, monitorPeriodinMinutes, facilityName);
+        clients.add(tempClient);
+        return true;
+    }
+
+    public boolean deregisterClient(InetAddress clientAddress, int port) {
+        for (MonitoringClient client: clients) {
+            if (client.getClientAddress() == clientAddress && client.getPort() == port) {
+                clients.remove(client);
+                return true;
+            }
+        }
+        return false;
+    }
     
     /**
      * Finds a booking by confirmation ID
@@ -331,5 +349,9 @@ public class BookingService {
      */
     public List<Facility> getAllFacilities() {
         return new ArrayList<>(facilities);
+    }
+
+    public List<MonitoringClient> getAllClients() {
+        return new ArrayList<>(clients);
     }
 }

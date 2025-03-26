@@ -88,7 +88,7 @@ public abstract class CustomSocket implements AutoCloseable {
      * @param destinationPort The destination port
      * @throws IOException If an I/O error occurs
      */
-    public abstract void send(Map<String, Object> message, InetAddress destinationAddress, int destinationPort) 
+    public abstract void send(Map<String, Object> message, UUID requestId, int serviceId, boolean isRequest, InetAddress destinationAddress, int destinationPort) 
             throws IOException;
 
     /**

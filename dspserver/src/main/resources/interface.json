@@ -6,7 +6,7 @@
                 "facilityName": "str"
             },
             {
-                "days": "str" 
+                "days": "str"
             }
         ]
     },
@@ -25,22 +25,7 @@
                 "facilityName": "str"
             },
             {
-                "startDay": "int"
-            },
-            {
-                "startHour": "int"
-            },
-            {
-                "startMinute": "int"
-            },
-            {
-                "endDay": "int"
-            },
-            {
-                "endHour": "int"
-            },
-            {
-                "endMinute": "int"
+                "timeSlot": "str"
             }
         ]
     },
@@ -49,6 +34,95 @@
         "fields": [
             {
                 "confirmationID": "str"
+            }
+        ]
+    },
+    {
+        "name": "EditBookingReq",
+        "fields": [
+            {
+                "confirmationID": "str"
+            },
+            {
+                "minuteOffset": "int"
+            }
+        ]
+    },
+    {
+        "name": "EditBookingResp",
+        "fields": [
+            {
+                "success": "bool"
+            }
+        ]
+    },
+    {
+        "name": "RegisterCallbackReq",
+        "fields": [
+            {
+                "facilityName": "str"
+            },
+            {
+                "monitoringPeriodInMinutes": "int"
+            }
+        ]
+    },
+    {
+        "name": "RegisterCallbackResp",
+        "fields": [
+            {
+                "success": "bool"
+            }
+        ]
+    },
+    {
+        "name": "NotifyCallbackReq",
+        "fields": [
+            {
+                "facilityName": "str"
+            }
+        ]
+    },
+    {
+        "name": "NotifyCallbackResp",
+        "fields": [
+            {
+                "success": "bool"
+            }
+        ]
+    },
+    {
+        "name": "CancelBookingReq",
+        "fields": [
+            {
+                "confirmationID": "str"
+            }
+        ]
+    },
+    {
+        "name": "CancelBookingResp",
+        "fields": [
+            {
+                "success": "bool"
+            }
+        ]
+    },
+    {
+        "name": "ExtendBookingReq",
+        "fields": [
+            {
+                "confirmationID": "str"
+            },
+            {
+                "minuteOffset": "int"
+            }
+        ]
+    },
+    {
+        "name": "ExtendBookingResp",
+        "fields": [
+            {
+                "success": "bool"
             }
         ]
     }

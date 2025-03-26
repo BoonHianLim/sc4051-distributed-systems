@@ -29,18 +29,8 @@ public class AtMostOnceSocket extends CustomSocket {
     }
 
     @Override
-    public void send(Map<String, Object> message, InetAddress destinationAddress, int destinationPort) 
-            throws IOException {
-        // Ensure we have a request ID
-        UUID requestId = (UUID) message.getOrDefault("request_id", UUID.randomUUID());
-        message.put("request_id", requestId);
-        
-        // Default to service ID 1 if not specified
-        int serviceId = (Integer) message.getOrDefault("service_id", 1);
-        
-        // Default to request if not specified
-        boolean isRequest = (Boolean) message.getOrDefault("is_request", true);
-        
+    public void send(Map<String, Object> message, UUID requestId, int serviceId, boolean isRequest, InetAddress destinationAddress, int destinationPort) 
+            throws IOException {        
         try {
             // Create message and marshal it
             Parser.Message parsedMessage = createMessage(message, serviceId, isRequest);

@@ -12,9 +12,33 @@
         "response": "BookFacilityResp"
     },
     {
-        "id": 9999,
-        "name": "Test",
-        "request": "BookFacilityResp",
-        "response": "BookFacilityResp"
+        "id": 3,
+        "name": "EditBooking",
+        "request": "EditBookingReq",
+        "response": "EditBookingResp"
+    },
+    {
+        "id": 4,
+        "name": "RegisterCallback",
+        "request": "RegisterCallbackReq",
+        "response": "RegisterCallbackResp"
+    },
+    {
+        "id": 5,
+        "name": "NotifyCallback",
+        "request": "NotifyCallbackReq",
+        "response": "NotifyCallbackResp"
+    },
+    {
+        "id": 6,
+        "name": "CancelBooking",
+        "request": "CancelBookingReq",
+        "response": "CancelBookingResp"
+    },
+    {
+        "id": 7,
+        "name":"ExtendBooking",
+        "request": "ExtendBookingReq",
+        "response": "ExtendBookingResp"
     }
 ]

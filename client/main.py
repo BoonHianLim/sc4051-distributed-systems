@@ -29,21 +29,22 @@ parser: Parser = Parser(interface_schema, services_schema)
 socket: Socket
 
 
-class BookFacilityResp(BaseModel):
-    obj_name = "BookFacilityResp"
-    def __init__(self, confirmation_id: str):    
+class BookFacilityReq(BaseModel):
+    obj_name = "BookFacilityReq"
+    def __init__(self, facility_name: str, timeSlot: str):    
         super().__init__()
-        self.confirmationID = confirmation_id
+        self.facilityName = facility_name
+        self.timeSlot = timeSlot
 
 at_least_once = True
 while True:
     if at_least_once:
-        socket = AtLeastOnceSocket(parser, port=12000)
+        socket = AtLeastOnceSocket(parser)
     else:
-        socket = AtMostOnceSocket(parser, port=12000)
+        socket = AtMostOnceSocket(parser)
     request_id = uuid4()
-    request = BookFacilityResp("Biboo")
-    response = socket.send(request, 1, True, port=11999)
+    request = BookFacilityReq("Library", "Mon,19,00 - Mon,20,00")
+    response = socket.send(request, 1, True)
     logger.info(response)
     time.sleep(2)
     socket.close()

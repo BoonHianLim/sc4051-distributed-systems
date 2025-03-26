@@ -43,17 +43,8 @@ public class AtLeastOnceSocket extends CustomSocket {
     }
 
     @Override
-    public void send(Map<String, Object> message, InetAddress destinationAddress, int destinationPort) 
+    public void send(Map<String, Object> message, UUID requestId, int serviceId, boolean isRequest,  InetAddress destinationAddress, int destinationPort) 
             throws IOException {
-        // Ensure we have a request ID
-        UUID requestId = (UUID) message.getOrDefault("request_id", UUID.randomUUID());
-        message.put("request_id", requestId);
-        
-        // Default to service ID 1 if not specified
-        int serviceId = (Integer) message.getOrDefault("service_id", 1);
-        
-        // Default to request if not specified
-        boolean isRequest = (Boolean) message.getOrDefault("is_request", true);
         
         try {
             // Create message and marshal it
@@ -86,16 +77,6 @@ public class AtLeastOnceSocket extends CustomSocket {
                 
                 // Parse the received message
                 Parser.Message message = parser.unmarshall(data);
-                
-                // Check if this is an acknowledgment
-                if (message.getServiceId() == ACK_SERVICE_ID) {
-                    // Remove the acknowledged message from pending
-                    pendingMessages.remove(message.getRequestId());
-                    continue; // Skip acknowledgments, continue receiving
-                }
-                
-                // For regular messages, send acknowledgment
-                sendAcknowledgment(message.getRequestId(), packet.getAddress(), packet.getPort());
                 
                 // Convert to the expected response format
                 Map<String, Object> resultMap = new java.util.HashMap<>(message.getData());
