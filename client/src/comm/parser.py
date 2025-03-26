@@ -126,7 +126,18 @@ class Parser():
         Returns:
             bytes: The marshalled byte stream representing the object.
         """
+        if request_type == RequestType.ERROR:
+            return self._marshal_error(request_id, service_id, item)
+        elif request_type == RequestType.REQUEST or request_type == RequestType.RESPONSE:
+            return self._marshal_normal(request_id, service_id, request_type, item)
+        else:
+            raise ValueError("Invalid request type")
 
+    def _marshal_error(self, request_id: UUID, service_id: int, item: ErrorObj) -> bytes:
+        error_message = item.errorMessage.encode("utf-8")
+        return request_id.bytes + service_id.to_bytes(2, byteorder='big') + RequestType.ERROR.to_bytes(1, byteorder='big') + error_message
+
+    def _marshal_normal(self, request_id: UUID, service_id: int, request_type: RequestType, item: BaseModel) -> bytes:
         data_format = self.data[item.obj_name]
 
         fields = data_format['fields']
