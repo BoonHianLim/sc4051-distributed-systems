@@ -45,7 +45,7 @@ class ListAvailabilityReq(BaseModel):
 class ListAvailabilityResp(BaseModel):
     obj_name = "ListAvailabilityResp"
 
-    def __init__(self, availabilities: str):
+    def __init__(self, availabilities: str = ""):
         super().__init__()
         self.availabilities = availabilities
 
