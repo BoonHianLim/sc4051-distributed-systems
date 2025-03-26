@@ -2,7 +2,7 @@ import struct
 from uuid import UUID
 import uuid
 
-from src.comm.types import BaseModel
+from src.comm.types import BaseModel, UnmarshalResult
 
 
 class Parser():
@@ -35,7 +35,7 @@ class Parser():
             self.services[obj_id]['request'] = obj['request']
             self.services[obj_id]['response'] = obj['response']
 
-    def unmarshall(self, recv_bytes: bytes) -> dict:
+    def unmarshall(self, recv_bytes: bytes) -> UnmarshalResult:
         """
         Unmarshalls the received bytes into a dictionary object based on the specified object name.
         Args:
@@ -47,8 +47,6 @@ class Parser():
             KeyError: If the obj_name is not found in the data format.
             struct.error: If there is an error unpacking the float value.
         """
-
-        obj = {}
         request_id = uuid.UUID(bytes=recv_bytes[:16])
 
         service_id = int.from_bytes(recv_bytes[16:18], byteorder='big')
@@ -56,6 +54,13 @@ class Parser():
         is_request = recv_bytes[18] == 0
         data_format = self.data[self.services[service_id]
                                 ["request" if is_request else "response"]]
+
+        class_name = data_format["name"]
+        available_classes = {cls.obj_name: cls for cls in BaseModel.__subclasses__() if cls.obj_name}
+        if class_name not in available_classes:
+            raise ValueError(f"Class {class_name} not found")
+        
+        obj = available_classes[class_name]()
 
         bytes_ptr = 19
         fields = data_format["fields"]
@@ -87,10 +92,7 @@ class Parser():
                     obj[field_name] = _value
                     bytes_ptr += 1
             fields_ptr += 1
-        obj["request_id"] = request_id
-        obj["service_id"] = service_id 
-        obj["is_request"] = is_request
-        return obj
+        return UnmarshalResult(obj, request_id, service_id, is_request)
 
     def marshall(self, request_id: UUID, service_id: int, is_request: bool, item: BaseModel) -> bytes:
         """

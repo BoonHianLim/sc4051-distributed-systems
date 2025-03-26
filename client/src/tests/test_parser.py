@@ -2,8 +2,19 @@ import json
 import os
 import unittest
 import uuid
-from src.comm.types import BaseModel
+from src.comm.types import BaseModel, UnmarshalResult
 from src.comm import parser
+
+
+class Fruit(BaseModel):
+    obj_name = "fruit"
+
+    def __init__(self, fruit_id: int = 0, name: str = "", price: float = 0.0, is_good_quality: bool = True):
+        super().__init__()
+        self.fruit_id = fruit_id
+        self.name = name
+        self.price = price
+        self.is_good_quality = is_good_quality
 
 
 class TestParser(unittest.TestCase):
@@ -79,17 +90,6 @@ class TestParser(unittest.TestCase):
             services_schema = json.load(f)
         p = parser.Parser(interface_schema, services_schema)
 
-        # pylint: disable=missing-class-docstring
-        class Fruit(BaseModel):
-            obj_name = "fruit"
-
-            def __init__(self, fruit_id: int = 0, name: str = "", price: float = 0.0, is_good_quality: bool = True):
-                super().__init__()
-                self.fruit_id = fruit_id
-                self.name = name
-                self.price = price
-                self.is_good_quality = is_good_quality
-
         data = Fruit(1, "apple", 1.0, True)
         request_id = uuid.uuid4()
         service_id = 1
@@ -127,13 +127,7 @@ class TestParser(unittest.TestCase):
             b'\x00\x01' + b'\x01' + b'\x00\x00\x00\x01' + \
             b'\x00\x05' + b'apple' + b'\x3f\x80\x00\x00' + b'\x01'
         request_id = uuid.UUID('00000000-0000-0000-0000-000000000001')
-        generated_data = p.unmarshall(data)
-        self.assertEqual(generated_data, {
-            "request_id": request_id,
-            "service_id": 1,
-            "is_request": False,
-            "fruit_id": 1,
-            "name": "apple",
-            "price": 1.0,
-            "is_good_quality": True
-        })
+        generated_data: UnmarshalResult = p.unmarshall(data)
+        self.assertEqual(generated_data, UnmarshalResult(
+            obj=Fruit(1, "apple", 1.0, True), request_id=request_id, service_id=1, is_request=False
+        ))
