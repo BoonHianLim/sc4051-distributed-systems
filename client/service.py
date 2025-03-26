@@ -186,7 +186,7 @@ while True:
                 logger.info("User confirmed cancel.")
                 print("Sending cancel request...")
                 request = CancelBookingReq(confirmation_id)
-                response: CancelBookingResp = socket.send(request, 5, True)
+                response: CancelBookingResp = socket.send(request, 6, True)
                 logger.info(response)
                 print("Cancel successful!")
             else:
@@ -207,7 +207,7 @@ while True:
                 logger.info("User confirmed extend.")
                 print("Sending extend request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response: EditBookingResp = socket.send(request, 6, True)
+                response: EditBookingResp = socket.send(request, 7, True)
                 logger.info(response)
                 print("Extend successful!")
             else:
