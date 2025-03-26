@@ -43,7 +43,8 @@ public class AtLeastOnceSocket extends CustomSocket {
     }
 
     @Override
-    public void send(Map<String, Object> message, UUID requestId, int serviceId, boolean isRequest,  InetAddress destinationAddress, int destinationPort) 
+    public void send(Map<String, Object> message, UUID requestId, int serviceId, 
+            RequestType isRequest,  InetAddress destinationAddress, int destinationPort) 
             throws IOException {
         
         try {
@@ -82,7 +83,7 @@ public class AtLeastOnceSocket extends CustomSocket {
                 Map<String, Object> resultMap = new java.util.HashMap<>(message.getData());
                 resultMap.put("request_id", message.getRequestId());
                 resultMap.put("service_id", message.getServiceId());
-                resultMap.put("is_request", message.isRequest());
+                resultMap.put("request_type", message.getRequestType());
                 
                 return new SenderResult(packet.getAddress(), packet.getPort(), resultMap);
                 
@@ -110,7 +111,7 @@ public class AtLeastOnceSocket extends CustomSocket {
             ackData.put("ack", true);
             
             Parser.Message ackMessage = new Parser.Message(
-                    requestId, ACK_SERVICE_ID, false, "ACK", ackData);
+                    requestId, ACK_SERVICE_ID, RequestType.LOST, "ACK", ackData);
             
             byte[] ackBytes = parser.marshall(ackMessage);
             sendDatagram(ackBytes, address, port);

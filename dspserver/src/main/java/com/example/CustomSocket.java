@@ -21,7 +21,7 @@ public abstract class CustomSocket implements AutoCloseable {
     protected DatagramSocket socket;
     protected ObjectMapper objectMapper;
     protected Parser parser;
-    
+
     // Maximum UDP packet size
     protected static final int MAX_PACKET_SIZE = 65507;
 
@@ -35,7 +35,7 @@ public abstract class CustomSocket implements AutoCloseable {
         this.objectMapper = new ObjectMapper();
         initializeParser();
     }
-    
+
     /**
      * Initializes the parser using schema files.
      */
@@ -80,15 +80,16 @@ public abstract class CustomSocket implements AutoCloseable {
     }
 
     /**
-     * Sends a message using the socket with delivery guarantees 
+     * Sends a message using the socket with delivery guarantees
      * implemented by concrete subclasses.
      * 
-     * @param message The message to send
+     * @param message            The message to send
      * @param destinationAddress The destination address
-     * @param destinationPort The destination port
+     * @param destinationPort    The destination port
      * @throws IOException If an I/O error occurs
      */
-    public abstract void send(Map<String, Object> message, UUID requestId, int serviceId, boolean isRequest, InetAddress destinationAddress, int destinationPort) 
+    public abstract void send(Map<String, Object> message, UUID requestId, int serviceId,
+            RequestType isRequest, InetAddress destinationAddress, int destinationPort)
             throws IOException;
 
     /**
@@ -103,16 +104,16 @@ public abstract class CustomSocket implements AutoCloseable {
     /**
      * Low-level method to send a datagram packet.
      * 
-     * @param data The data to send
+     * @param data    The data to send
      * @param address The destination address
-     * @param port The destination port
+     * @param port    The destination port
      * @throws IOException If an I/O error occurs
      */
     protected void sendDatagram(byte[] data, InetAddress address, int port) throws IOException {
         if (socket == null) {
             throw new IllegalStateException("Socket not initialized. Call createServer() or createClient() first.");
         }
-        
+
         DatagramPacket packet = new DatagramPacket(data, data.length, address, port);
         socket.send(packet);
     }
@@ -127,7 +128,7 @@ public abstract class CustomSocket implements AutoCloseable {
         if (socket == null) {
             throw new IllegalStateException("Socket not initialized. Call createServer() or createClient() first.");
         }
-        
+
         byte[] buffer = new byte[MAX_PACKET_SIZE];
         DatagramPacket packet = new DatagramPacket(buffer, buffer.length);
         socket.receive(packet);
@@ -146,43 +147,49 @@ public abstract class CustomSocket implements AutoCloseable {
         if (jsonStream == null) {
             throw new RuntimeException("JSON file " + jsonFile + " not found in resources");
         }
-        return objectMapper.readValue(jsonStream, new TypeReference<>() {});
+        return objectMapper.readValue(jsonStream, new TypeReference<>() {
+        });
     }
 
     /**
      * Creates a message from a map for marshalling.
      * 
-     * @param data The message data
+     * @param data      The message data
      * @param serviceId The service ID
      * @param isRequest Whether this is a request or response
      * @return A Parser.Message object ready for marshalling
      * @throws Exception If the service ID is not found or the format is invalid
      */
-    protected Parser.Message createMessage(Map<String, Object> data, int serviceId, boolean isRequest) 
+    protected Parser.Message createMessage(Map<String, Object> data, int serviceId, RequestType requestType)
             throws Exception {
         List<Map<String, Object>> servicesSchema = loadJSONSchema("services.json");
-        
+
         String formatName = null;
-        for (Map<String, Object> service : servicesSchema) {
-            if (((Integer)service.get("id")).equals(serviceId)) {
-                formatName = (String) (isRequest ? service.get("request") : service.get("response"));
-                break;
+        if (requestType == RequestType.REQUEST || requestType == RequestType.RESPONSE) {
+            for (Map<String, Object> service : servicesSchema) {
+                if (((Integer) service.get("id")).equals(serviceId)) {
+                    formatName = (String) (requestType == RequestType.REQUEST ? service.get("request")
+                            : service.get("response"));
+                    break;
+                }
             }
+        } else if (requestType == RequestType.ERROR) {
+            formatName = "error";
         }
-        
+
         if (formatName == null) {
             throw new IllegalArgumentException("Service ID not found: " + serviceId);
         }
-        
+
         UUID requestId = (UUID) data.getOrDefault("request_id", UUID.randomUUID());
-        
+
         // Remove metadata fields that aren't part of the actual payload
         Map<String, Object> payloadData = new java.util.HashMap<>(data);
         payloadData.remove("request_id");
         payloadData.remove("service_id");
         payloadData.remove("is_request");
-        
-        return new Parser.Message(requestId, serviceId, isRequest, formatName, payloadData);
+
+        return new Parser.Message(requestId, serviceId, requestType, formatName, payloadData);
     }
 
     @Override

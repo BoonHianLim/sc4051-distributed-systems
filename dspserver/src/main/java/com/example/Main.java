@@ -35,7 +35,7 @@ public class Main {
                 String availabilities = String.join(":", facilityAvailability);
                 Map<String, Object> listAvailabilityResp = new HashMap<String, Object>();
                 listAvailabilityResp.put("availabilities", availabilities);
-                socket.send(listAvailabilityResp, (UUID) result.get("request_id"), service_id, false, rawResult.getSenderIpAddress(), rawResult.getSenderPort());
+                socket.send(listAvailabilityResp, (UUID) result.get("request_id"), service_id, RequestType.RESPONSE, rawResult.getSenderIpAddress(), rawResult.getSenderPort());
                 break;
 
             default:

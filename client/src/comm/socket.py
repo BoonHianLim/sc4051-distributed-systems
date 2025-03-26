@@ -3,7 +3,7 @@ from socket import AF_INET, SOCK_DGRAM, socket, timeout
 from typing import Optional
 from uuid import uuid4
 
-from src.comm.types import BaseModel, UnmarshalResult
+from src.comm.types import BaseModel, RequestType, UnmarshalResult
 from src.comm.parser import Parser
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class Socket():
     def __init__(self):
         pass
 
-    def send(self, message: any, service_id: int, is_request: bool) -> any:
+    def send(self, message: any, service_id: int, request_type: RequestType) -> any:
         pass
 
     def listen(self):
@@ -31,12 +31,12 @@ class AtLeastOnceSocket(Socket):
         logger.info(
             "[AtLeastOnceSocket] Socket created at %s:%s", ip_addr, port)
 
-    def send(self, message: any, service_id: int, is_request: bool, server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
+    def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
         request_id = uuid4()
         logger.info("[AtLeastOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
         msg_in_bytes = self.parser.marshall(
-            request_id, service_id, is_request, message)
+            request_id, service_id, request_type, message)
 
         addr = (server_addr, port)
         result = None
@@ -84,13 +84,13 @@ class AtMostOnceSocket(Socket):
         logger.info("[AtMostOnceSocket] Socket created at %s:%s",
                     ip_addr, port)
 
-    def send(self, message: any, service_id: int, is_request: bool,
+    def send(self, message: any, service_id: int, request_type: RequestType,
              server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
         request_id = uuid4()
         logger.info("[AtMostOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
         msg_in_bytes = self.parser.marshall(
-            request_id, service_id, is_request, message)
+            request_id, service_id, request_type, message)
         addr = (server_addr, port)
         result = None
         while result is None:

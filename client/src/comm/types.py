@@ -1,3 +1,6 @@
+from enum import IntEnum
+
+
 class BaseModel():
     obj_name = ""
 
@@ -20,18 +23,42 @@ class BaseModel():
         return vars(self) == vars(value)
 
 
+class RequestType(IntEnum):
+    REQUEST = 0
+    RESPONSE = 1
+    ERROR = 2
+    LOST = 3
+
+    def label(self):
+        match self:
+            case RequestType.REQUEST:
+                return "request"
+            case RequestType.RESPONSE:
+                return "response"
+            case RequestType.ERROR:
+                return "error"
+            case RequestType.LOST:
+                return "lost"
+
+
 class UnmarshalResult():
-    def __init__(self, obj: BaseModel, request_id: str, service_id: int, is_request: bool):
+    def __init__(self, obj: BaseModel, request_id: str, service_id: int, request_type: RequestType):
         self.obj = obj
         self.request_id = request_id
         self.service_id = service_id
-        self.is_request = is_request
+        self.request_type = request_type
 
     def __eq__(self, value):
         if not isinstance(value, self.__class__):
             return False
-        return self.obj == value.obj and self.request_id == value.request_id and self.service_id == value.service_id and self.is_request == value.is_request
+        return self.obj == value.obj and self.request_id == value.request_id and self.service_id == value.service_id and self.request_type == value.request_type
 
+class ErrorObj(BaseModel):
+    obj_name = "ErrorObj"
+
+    def __init__(self, error_message: str = ""):
+        super().__init__()
+        self.errorMessage = error_message
 
 class ListAvailabilityReq(BaseModel):
     obj_name = "ListAvailabilityReq"
@@ -58,13 +85,15 @@ class BookFacilityReq(BaseModel):
         self.facilityName = facility_name
         self.timeSlot = time_slot
 
+
 class BookFacilityResp(BaseModel):
     obj_name = "BookFacilityResp"
 
     def __init__(self, confirmation_id: str = ""):
         super().__init__()
         self.confirmationID = confirmation_id
-    
+
+
 class EditBookingReq(BaseModel):
     obj_name = "EditBookingReq"
 
@@ -73,12 +102,14 @@ class EditBookingReq(BaseModel):
         self.confirmationID = confirmation_id
         self.minuteOffset = minute_offset
 
+
 class EditBookingResp(BaseModel):
     obj_name = "EditBookingResp"
 
     def __init__(self, success: bool = False):
         super().__init__()
         self.success = success
+
 
 class RegisterCallbackReq(BaseModel):
     obj_name = "RegisterCallbackReq"
@@ -88,12 +119,14 @@ class RegisterCallbackReq(BaseModel):
         self.facilityName = facility_name
         self.monitoringPeriodInMinutes = monitoring_period_in_minutes
 
-class RegisterCallbackResp(BaseModel): 
+
+class RegisterCallbackResp(BaseModel):
     obj_name = "RegisterCallbackResp"
 
     def __init__(self, success: bool = False):
         super().__init__()
         self.success = success
+
 
 class NotifyCallbackReq(BaseModel):
     obj_name = "NotifyCallbackReq"
@@ -101,6 +134,7 @@ class NotifyCallbackReq(BaseModel):
     def __init__(self, facility_name: str = ""):
         super().__init__()
         self.facilityName = facility_name
+
 
 class NotifyCallbackResp(BaseModel):
     def __init__(self, success: bool = False):
@@ -115,12 +149,14 @@ class CancelBookingReq(BaseModel):
         super().__init__()
         self.confirmationID = confirmation_id
 
+
 class CancelBookingResp(BaseModel):
     obj_name = "CancelBookingResp"
 
     def __init__(self, success: bool = False):
         super().__init__()
         self.success = success
+
 
 class ExtendBookingReq(BaseModel):
     obj_name = "ExtendBookingReq"
@@ -129,6 +165,7 @@ class ExtendBookingReq(BaseModel):
         super().__init__()
         self.confirmationID = confirmation_id
         self.minuteOffset = minute_offset
+
 
 class ExtendBookingResp(BaseModel):
     obj_name = "ExtendBookingResp"

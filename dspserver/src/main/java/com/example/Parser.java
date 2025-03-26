@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+
 /**
  * A system for serializing and deserializing structured data according to a schema.
  */
@@ -139,7 +140,7 @@ public class Parser {
         UUID requestId = this.unmarshalUUID(uuidBytes);
 
         int serviceId = buffer.getShort() & 0xFFFF;
-        boolean isRequest = buffer.get() == 0;
+        RequestType isRequest = RequestType.fromCode(buffer.get());
 
         // Get the data format for unmarshalling
         ServiceInfo serviceInfo = services.get(serviceId);
@@ -147,7 +148,10 @@ public class Parser {
             throw new IllegalArgumentException("Unknown service ID: " + serviceId);
         }
         
-        String formatName = isRequest ? serviceInfo.request : serviceInfo.response;
+        if (isRequest == RequestType.ERROR || isRequest == RequestType.LOST) {
+            throw new IllegalArgumentException("Received error response");
+        }
+        String formatName = isRequest == RequestType.REQUEST ? serviceInfo.request : serviceInfo.response;
         DataFormat dataFormat = dataFormats.get(formatName);
         if (dataFormat == null) {
             throw new IllegalArgumentException("Unknown data format: " + formatName);
@@ -205,11 +209,17 @@ public class Parser {
         // Write header
         buffer.put(marshalUUID(message.getRequestId()));
         buffer.putShort((short) message.getServiceId());
-        buffer.put((byte) (message.isRequest() ? 0 : 1));
-
-        // Write fields
-        for (FieldType field : dataFormat.fields) {
-            writeField(buffer, field.name, field.type, message.getData());
+        buffer.put((byte) message.getRequestType().getCode());
+        if (message.getRequestType() == RequestType.REQUEST || message.getRequestType() == RequestType.LOST) {
+            // Write fields
+            for (FieldType field : dataFormat.fields) {
+                writeField(buffer, field.name, field.type, message.getData());
+            }
+        } else if (message.getRequestType() == RequestType.ERROR) {
+            String errorMessage = (String) message.getData().get("errorMessage");
+            byte[] strBytes = errorMessage.getBytes(StandardCharsets.UTF_8);
+            buffer.putShort((short) strBytes.length);
+            buffer.put(strBytes);
         }
 
         return buffer.array();
@@ -320,14 +330,14 @@ public class Parser {
     public static class Message {
         private final UUID requestId;
         private final int serviceId;
-        private final boolean isRequest;
+        private final RequestType requestType;
         private final String formatName;
         private final Map<String, Object> data;
 
-        public Message(UUID requestId, int serviceId, boolean isRequest, String formatName, Map<String, Object> data) {
+        public Message(UUID requestId, int serviceId, RequestType requestType, String formatName, Map<String, Object> data) {
             this.requestId = requestId;
             this.serviceId = serviceId;
-            this.isRequest = isRequest;
+            this.requestType = requestType;
             this.formatName = formatName;
             this.data = data;
         }
@@ -340,8 +350,8 @@ public class Parser {
             return serviceId;
         }
 
-        public boolean isRequest() {
-            return isRequest;
+        public RequestType getRequestType() {
+            return requestType;
         }
 
         public String getFormatName() {

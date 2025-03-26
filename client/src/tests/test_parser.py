@@ -2,7 +2,7 @@ import json
 import os
 import unittest
 import uuid
-from src.comm.types import BaseModel, UnmarshalResult
+from src.comm.types import BaseModel, RequestType, UnmarshalResult
 from src.comm import parser
 
 
@@ -93,7 +93,7 @@ class TestParser(unittest.TestCase):
         data = Fruit(1, "apple", 1.0, True)
         request_id = uuid.uuid4()
         service_id = 1
-        generated_bytes = p.marshall(request_id, service_id, True, data)
+        generated_bytes = p.marshall(request_id, service_id, RequestType.REQUEST, data)
         expected_bytes = request_id.bytes + service_id.to_bytes(
             2, byteorder='big') + b'\x00' + b'\x00\x00\x00\x01' + b'\x00\x05' + b'apple' + b'\x3f\x80\x00\x00' + b'\x01'
         self.assertEqual(generated_bytes, expected_bytes)
@@ -129,5 +129,5 @@ class TestParser(unittest.TestCase):
         request_id = uuid.UUID('00000000-0000-0000-0000-000000000001')
         generated_data: UnmarshalResult = p.unmarshall(data)
         self.assertEqual(generated_data, UnmarshalResult(
-            obj=Fruit(1, "apple", 1.0, True), request_id=request_id, service_id=1, is_request=False
+            obj=Fruit(1, "apple", 1.0, True), request_id=request_id, service_id=1, request_type=RequestType.RESPONSE
         ))
