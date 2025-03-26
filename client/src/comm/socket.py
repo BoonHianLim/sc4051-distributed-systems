@@ -2,9 +2,12 @@ import logging
 from socket import AF_INET, SOCK_DGRAM, socket, timeout
 from typing import Optional
 from uuid import uuid4
+
+from src.comm.types import BaseModel, UnmarshalResult
 from src.comm.parser import Parser
 
 logger = logging.getLogger(__name__)
+
 
 class Socket():
     def __init__(self):
@@ -25,9 +28,10 @@ class AtLeastOnceSocket(Socket):
         self.socket.settimeout(timeout_seconds)
         addr = (ip_addr, port)
         self.socket.bind(addr)
-        logger.info("[AtLeastOnceSocket] Socket created at %s:%s", ip_addr, port)
+        logger.info(
+            "[AtLeastOnceSocket] Socket created at %s:%s", ip_addr, port)
 
-    def send(self, message: any, service_id: int, is_request: bool, server_addr: str = "127.0.0.1", port: int = 12000) -> any:
+    def send(self, message: any, service_id: int, is_request: bool, server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
         request_id = uuid4()
         logger.info("[AtLeastOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
@@ -35,18 +39,18 @@ class AtLeastOnceSocket(Socket):
             request_id, service_id, is_request, message)
 
         addr = (server_addr, port)
-        obj = None
-        while obj is None:
+        result = None
+        while result is None:
             self.socket.sendto(msg_in_bytes, addr)
             logger.debug(f"[AtLeastOnceSocket] Sent request.")
-            obj = self.listen()
-        return obj
+            result = self.listen()
+        return result.obj
 
-    def listen(self) -> Optional[dict]:
-        obj = None
+    def listen(self) -> Optional[UnmarshalResult]:
+        result = None
         try:
             recv_bytes, _ = self.socket.recvfrom(1024)
-            obj = self.parser.unmarshall(recv_bytes)
+            result = self.parser.unmarshall(recv_bytes)
         except timeout:
             logger.error("Socket timeout error")
         except OSError as os_error:
@@ -54,7 +58,7 @@ class AtLeastOnceSocket(Socket):
         except Exception as e:
             logger.error("Error: %s", e)
         finally:
-            return obj
+            return result
 
     def close(self):
         self.socket.close()
@@ -77,28 +81,29 @@ class AtMostOnceSocket(Socket):
         self.socket.settimeout(timeout_seconds)
         addr = (ip_addr, port)
         self.socket.bind(addr)
-        logger.info("[AtMostOnceSocket] Socket created at %s:%s", ip_addr, port)
+        logger.info("[AtMostOnceSocket] Socket created at %s:%s",
+                    ip_addr, port)
 
     def send(self, message: any, service_id: int, is_request: bool,
-             server_addr: str = "127.0.0.1", port: int = 12000) -> any:
+             server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
         request_id = uuid4()
         logger.info("[AtMostOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
         msg_in_bytes = self.parser.marshall(
             request_id, service_id, is_request, message)
         addr = (server_addr, port)
-        obj = None
-        while obj is None:
+        result = None
+        while result is None:
             self.socket.sendto(msg_in_bytes, addr)
             logger.debug(f"[AtLeastOnceSocket] Sent request.")
-            obj = self.listen()
-        return obj
+            result = self.listen()
+        return result.obj
 
-    def listen(self) -> Optional[dict]:
-        obj = None
+    def listen(self) -> Optional[UnmarshalResult]:
+        result = None
         try:
             recv_bytes, _ = self.socket.recvfrom(1024)
-            obj = self.parser.unmarshall(recv_bytes)
+            result = self.parser.unmarshall(recv_bytes)
         except timeout:
             logger.error("Socket timeout error")
         except OSError as os_error:
@@ -106,8 +111,8 @@ class AtMostOnceSocket(Socket):
         except Exception as e:
             logger.error("Error: %s", e)
         finally:
-            return obj
-        
+            return result
+
     def close(self):
         # shut socket down
         self.socket.close()
