@@ -13,7 +13,6 @@ public class Booking {
     private UUID confirmationID;
     private String facilityName;
     private String timeSlot;
-    private String clientName;
     private TimeSlotDecoder timeSlotDecoder;
 
     /**
@@ -21,13 +20,11 @@ public class Booking {
      * 
      * @param facilityName the name of the facility being booked
      * @param timeSlot the time slot in format "Day,Hour,Minute - Day,Hour,Minute"
-     * @param clientName the name of the client making the booking
      */
-    public Booking(String facilityName, String timeSlot, String clientName) {
+    public Booking(String facilityName, String timeSlot) {
         this.confirmationID = UUID.randomUUID();
         this.facilityName = facilityName;
         this.timeSlot = timeSlot;
-        this.clientName = clientName;
         this.timeSlotDecoder = new TimeSlotDecoder(timeSlot);
     }
     /**
@@ -131,15 +128,6 @@ public class Booking {
     }
 
     /**
-     * Gets the client name.
-     * 
-     * @return the client name
-     */
-    public String getClientName() {
-        return clientName;
-    }
-
-    /**
      * Gets the TimeSlotDecoder associated with this booking.
      * 
      * @return the TimeSlotDecoder instance
@@ -159,7 +147,6 @@ public class Booking {
                 "confirmationID=" + confirmationID +
                 ", facilityName='" + facilityName + '\'' +
                 ", timeSlot='" + timeSlot + '\'' +
-                ", clientName='" + clientName + '\'' +
                 '}';
     }
 }

@@ -76,6 +76,13 @@ class Parser():
 
         obj = available_classes[class_name]()
 
+        class_name = data_format["name"]
+        available_classes = {cls.obj_name: cls for cls in BaseModel.__subclasses__() if cls.obj_name}
+        if class_name not in available_classes:
+            raise ValueError(f"Class {class_name} not found")
+        
+        obj = available_classes[class_name]()
+
         bytes_ptr = 19
         fields = data_format["fields"]
         fields_ptr = 0

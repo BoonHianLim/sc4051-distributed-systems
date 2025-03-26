@@ -49,7 +49,7 @@ public class AtLeastOnceSocket extends CustomSocket {
         
         try {
             // Create message and marshal it
-            Parser.Message parsedMessage = createMessage(message, serviceId, isRequest);
+            Parser.Message parsedMessage = createMessage(message, serviceId, requestId, isRequest);
             byte[] data = parser.marshall(parsedMessage);
             
             // Store pending message for retransmission
@@ -61,7 +61,7 @@ public class AtLeastOnceSocket extends CustomSocket {
             sendDatagram(data, destinationAddress, destinationPort);
             
             // Start retransmission thread if not already running
-            ensureRetransmissionThreadRunning();
+            // ensureRetransmissionThreadRunning();
             
         } catch (Exception e) {
             throw new IOException("Failed to send message", e);
@@ -121,29 +121,29 @@ public class AtLeastOnceSocket extends CustomSocket {
         }
     }
     
-    /**
-     * Ensures that a thread is running to handle retransmissions.
-     */
-    private void ensureRetransmissionThreadRunning() {
-        // Use a single thread to handle retransmissions
-        Thread retransmitThread = new Thread(() -> {
-            while (!Thread.currentThread().isInterrupted() && !socket.isClosed()) {
-                try {
-                    retransmitPendingMessages();
-                    Thread.sleep(DEFAULT_TIMEOUT_MS / 2);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    // Log exception but keep thread alive
-                    e.printStackTrace();
-                }
-            }
-        });
+    // /**
+    //  * Ensures that a thread is running to handle retransmissions.
+    //  */
+    // private void ensureRetransmissionThreadRunning() {
+    //     // Use a single thread to handle retransmissions
+    //     Thread retransmitThread = new Thread(() -> {
+    //         while (!Thread.currentThread().isInterrupted() && !socket.isClosed()) {
+    //             try {
+    //                 retransmitPendingMessages();
+    //                 Thread.sleep(DEFAULT_TIMEOUT_MS / 2);
+    //             } catch (InterruptedException e) {
+    //                 Thread.currentThread().interrupt();
+    //                 break;
+    //             } catch (Exception e) {
+    //                 // Log exception but keep thread alive
+    //                 e.printStackTrace();
+    //             }
+    //         }
+    //     });
         
-        retransmitThread.setDaemon(true);
-        retransmitThread.start();
-    }
+    //     retransmitThread.setDaemon(true);
+    //     retransmitThread.start();
+    // }
     
     /**
      * Checks pending messages and retransmits if needed.

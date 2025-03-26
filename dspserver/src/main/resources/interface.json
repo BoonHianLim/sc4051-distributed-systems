@@ -79,7 +79,7 @@
         "name": "NotifyCallbackReq",
         "fields": [
             {
-                "facilityName": "str"
+                "availabilities": "str"
             }
         ]
     },
@@ -123,6 +123,23 @@
         "fields": [
             {
                 "success": "bool"
+            }
+        ]
+    },
+    {
+        "name": "SocketSwitchingReq",
+        "fields": [
+            {
+                "switch": "str" 
+            }
+        ]
+    },
+    {
+        "name": "SocketSwitchingResp",
+        "fields": [
+            {
+                "message": "bool",
+                "error": "str"
             }
         ]
     }

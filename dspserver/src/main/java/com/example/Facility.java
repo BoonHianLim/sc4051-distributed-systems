@@ -11,6 +11,11 @@ public class Facility {
     private UUID facilityID;
     private String facilityName;
     private List<Booking> bookings;
+    
+    // Default operating hours
+    private static final int OPENING_HOUR = 8;  // 8 AM
+    private static final int CLOSING_HOUR = 20; // 8 PM
+    private static final int TIME_SLOT_DURATION = 60; // minutes
 
     public Facility(String facilityName) {
         this.facilityID = UUID.randomUUID();
@@ -39,27 +44,71 @@ public class Facility {
     }
 
     /**
-     * Gets a list of bookings that are available (not booked) for the specified days.
+     * Gets a list of time slots that are available (not booked) for the specified days.
      * 
      * @param days a comma-separated list of days (e.g., "Mon, Tue")
-     * @return a list of Booking objects that are available on the specified days
+     * @return a list of Booking objects representing available time slots on the specified days
      */
     public List<Booking> getAvailableSlots(String days) {
         // Parse the requested days
         Set<String> requestedDays = parseRequestedDays(days);
         
-        // Filter bookings to only include those on the requested days
+        // Create a list to store the available time slots
         List<Booking> availableSlots = new ArrayList<>();
         
-        // Find bookings on the requested days
-        for (Booking booking : bookings) {
-            String startDay = booking.getTimeSlotDecoder().getStartDay();
-            if (requestedDays.contains(startDay)) {
-                availableSlots.add(booking);
+        // For each requested day, generate the default time slots
+        for (String day : requestedDays) {
+            // Generate time slots for this day based on facility operating hours
+            List<String> dayTimeSlots = generateTimeSlotsForDay(day);
+            
+            // For each potential time slot, check if it's available
+            for (String timeSlot : dayTimeSlots) {
+                // If the time slot doesn't overlap with any existing booking, it's available
+                if (checkAvailability(timeSlot)) {
+                    // Create a temporary booking object to represent this available slot
+                    // This booking is not added to the facility's bookings list
+                    Booking availableSlot = new Booking(facilityName, timeSlot);
+                    availableSlots.add(availableSlot);
+                }
             }
         }
         
         return availableSlots;
+    }
+    
+    /**
+     * Generates time slots for a specific day based on facility operating hours.
+     * 
+     * @param day the three-letter day abbreviation (e.g., "Mon")
+     * @return a list of time slot strings
+     */
+    private List<String> generateTimeSlotsForDay(String day) {
+        List<String> timeSlots = new ArrayList<>();
+        
+        // Generate time slots from opening to closing time
+        for (int hour = OPENING_HOUR; hour < CLOSING_HOUR; hour++) {
+            // For each hour, create a time slot
+            int startHour = hour;
+            int startMinute = 0;
+            
+            int endHour = hour;
+            int endMinute = TIME_SLOT_DURATION;
+            
+            // Adjust for slots that cross hour boundaries
+            if (endMinute >= 60) {
+                endHour += endMinute / 60;
+                endMinute = endMinute % 60;
+            }
+            
+            // Create the time slot string
+            String timeSlot = String.format("%s,%d,%d - %s,%d,%d", 
+                    day, startHour, startMinute, 
+                    day, endHour, endMinute);
+            
+            timeSlots.add(timeSlot);
+        }
+        
+        return timeSlots;
     }
 
     /**
@@ -73,7 +122,7 @@ public class Facility {
             // Check if the time period is available
             if (checkAvailability(timePeriod)) {
                 // Add a new booking for this time period
-                Booking newBooking = new Booking(facilityName, timePeriod, "System Block");
+                Booking newBooking = new Booking(facilityName, timePeriod);
                 bookings.add(newBooking);
             } else {
                 throw new IllegalStateException("Cannot book unavailable time period: " + timePeriod);

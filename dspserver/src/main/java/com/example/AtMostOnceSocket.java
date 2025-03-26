@@ -34,7 +34,7 @@ public class AtMostOnceSocket extends CustomSocket {
             throws IOException {
         try {
             // Create message and marshal it
-            Parser.Message parsedMessage = createMessage(message, serviceId, isRequest);
+            Parser.Message parsedMessage = createMessage(message, serviceId, requestId, isRequest);
             byte[] data = parser.marshall(parsedMessage);
 
             // Send message just once, no retransmission

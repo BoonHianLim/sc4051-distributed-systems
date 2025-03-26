@@ -72,7 +72,7 @@ class ListAvailabilityReq(BaseModel):
 class ListAvailabilityResp(BaseModel):
     obj_name = "ListAvailabilityResp"
 
-    def __init__(self, availabilities: str):
+    def __init__(self, availabilities: str = ""):
         super().__init__()
         self.availabilities = availabilities
 
@@ -84,7 +84,6 @@ class BookFacilityReq(BaseModel):
         super().__init__()
         self.facilityName = facility_name
         self.timeSlot = time_slot
-
 
 class BookFacilityResp(BaseModel):
     obj_name = "BookFacilityResp"
@@ -102,14 +101,12 @@ class EditBookingReq(BaseModel):
         self.confirmationID = confirmation_id
         self.minuteOffset = minute_offset
 
-
 class EditBookingResp(BaseModel):
     obj_name = "EditBookingResp"
 
     def __init__(self, success: bool = False):
         super().__init__()
         self.success = success
-
 
 class RegisterCallbackReq(BaseModel):
     obj_name = "RegisterCallbackReq"
@@ -127,14 +124,12 @@ class RegisterCallbackResp(BaseModel):
         super().__init__()
         self.success = success
 
-
 class NotifyCallbackReq(BaseModel):
     obj_name = "NotifyCallbackReq"
 
     def __init__(self, facility_name: str = ""):
         super().__init__()
         self.facilityName = facility_name
-
 
 class NotifyCallbackResp(BaseModel):
     def __init__(self, success: bool = False):
@@ -149,14 +144,12 @@ class CancelBookingReq(BaseModel):
         super().__init__()
         self.confirmationID = confirmation_id
 
-
 class CancelBookingResp(BaseModel):
     obj_name = "CancelBookingResp"
 
     def __init__(self, success: bool = False):
         super().__init__()
         self.success = success
-
 
 class ExtendBookingReq(BaseModel):
     obj_name = "ExtendBookingReq"
@@ -165,7 +158,6 @@ class ExtendBookingReq(BaseModel):
         super().__init__()
         self.confirmationID = confirmation_id
         self.minuteOffset = minute_offset
-
 
 class ExtendBookingResp(BaseModel):
     obj_name = "ExtendBookingResp"
