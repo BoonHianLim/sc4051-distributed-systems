@@ -26,7 +26,23 @@ with open(inteface_path, "r", encoding="utf-8") as f:
 with open(services_path, "r", encoding="utf-8") as f:
     services_schema = json.load(f)
 parser: Parser = Parser(interface_schema, services_schema)
-socket: Socket = AtLeastOnceSocket(parser)
+socket = None
+bind_port = 11999
+while socket is None:
+    try:
+        socket: Socket = AtLeastOnceSocket(parser, port=bind_port)
+    except OSError as e:
+        if "Address already in use" in str(e):
+            # Address is already in use, try again after 1 second
+            print(f"Port {bind_port} is already in use. Retrying...")
+            bind_port += 1
+            socket = None
+        else:
+            # Some other error occurred, raise it
+            raise e
+    except Exception as e:
+        # Some other error occurred, raise it
+        raise e
 at_least_once = True
 
 print(r'''
@@ -57,6 +73,7 @@ while True:
     """)
 
     options = safe_input("Enter an option: ", "int")
+
     class BookingOptions(IntEnum):
         QUERY = 1
         BOOK = 2
@@ -92,7 +109,8 @@ while True:
                 else:
                     availability_response: ListAvailabilityResp = response
                     logger.info(availability_response)
-                    availabilities_list = availability_response.availabilities.split(":")
+                    availabilities_list = availability_response.availabilities.split(
+                        ":")
                     for availability in availabilities_list:
                         print(availability)
             else:
@@ -131,7 +149,8 @@ while True:
                 else:
                     booking_response: BookFacilityResp = response
                     logger.info(booking_response)
-                    print(f"Booking successful! Confirmation ID: {booking_response.confirmationID}")
+                    print(
+                        f"Booking successful! Confirmation ID: {booking_response.confirmationID}")
             else:
                 logger.info("User cancelled booking.")
                 print("Operation cancelled.")
@@ -192,7 +211,8 @@ while True:
                         response: UnmarshalResult = socket.listen()
                         logger.info(response)
                         notify_request: NotifyCallbackReq = response.obj
-                        print(f"Notification received for {notify_request.facilityName}.")
+                        print(
+                            f"Notification received for {notify_request.facilityName}.")
             else:
                 logger.info("User cancelled listen.")
                 print("Operation cancelled.")
@@ -257,10 +277,26 @@ while True:
             if user_confirmation == 1:
                 socket.close()
                 at_least_once = not at_least_once
-                if at_least_once:
-                    socket = AtLeastOnceSocket(parser)
-                else:
-                    socket = AtMostOnceSocket(parser)
+                socket = None
+                while socket is None:
+                    try:
+                        if at_least_once:
+                            socket = AtLeastOnceSocket(parser)
+                        else:
+                            socket = AtMostOnceSocket(parser)
+                    except OSError as e:
+                        if "Address already in use" in str(e):
+                            # Address is already in use, try again after 1 second
+                            print(
+                                f"Port {bind_port} is already in use. Retrying...")
+                            bind_port += 1
+                            socket = None
+                        else:
+                            # Some other error occurred, raise it
+                            raise e
+                    except Exception as e:
+                        # Some other error occurred, raise it
+                        raise e
                 print("Successfully changed socket type to AtLeastOnceSocket" if at_least_once else "Successfully changed socket type to AtMostOnceSocket")
             else:
                 logger.info("User cancelled socket type change. Current socket type is still AtLeastOnceSocket" if isinstance(
