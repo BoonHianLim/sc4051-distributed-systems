@@ -121,6 +121,54 @@ public class ParserTest {
         mockSocket.close();
     }
 
+    @Test
+    public void testMarshalACK(){
+        MockSocket mockSocket = new MockSocket(0);
+        try {
+            Map<String, Object> message = new HashMap<String, Object>();
+            UUID requestId = new UUID(0L, 0L);
+            Parser.Message parsedMessage = mockSocket.createMessage(message, 1, requestId, RequestType.ACK);
+            byte[] actual = mockSocket.parser.marshall(parsedMessage);
+
+            ByteBuffer buffer = ByteBuffer.allocate(16 + 2 + 1); // UUID (16 bytes) + service ID (2 bytes) +
+                                                                     // is_request
+            // flag (1 byte)
+            buffer.position(16); // Skip UUID
+            buffer.putShort((short) 1); // Service ID
+            buffer.put((byte) 3); // Request flag
+            byte[] expected = buffer.array();
+
+            assertArrayEquals(expected, actual, "Byte arrays do not match");
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("Test failed due to exception: " + e.getMessage());
+        }
+        mockSocket.close();
+    }
+
+    @Test
+    public void testUnmarshalACK(){
+        MockSocket mockSocket = new MockSocket(0);
+        try {
+            ByteBuffer buffer = ByteBuffer.allocate(16 + 2 + 1); // UUID (16 bytes) + service ID (2 bytes) +
+                                                                     // is_request
+            // flag (1 byte)
+            buffer.position(16); // Skip UUID
+            buffer.putShort((short) 1); // Service ID
+            buffer.put((byte) 3); // Request flag
+            byte[] data = buffer.array();
+            
+            Parser.Message message = mockSocket.parser.unmarshall(data);
+            UUID requestId = new UUID(0L, 0L);
+            assertEquals(RequestType.ACK, message.getRequestType(), "Request type should be ACK");
+            assertEquals(requestId,message.getRequestId(), "Request ID should be 1");
+            assertEquals(new HashMap<>(), message.getData(), "Data should be empty");
+        } catch (Exception e) {
+            e.printStackTrace();
+            fail("Test failed due to exception: " + e.getMessage());
+        }
+        mockSocket.close();
+    }
     // TODO: Implement this test if server is updated to handle error messages
     // @Test
     // public void testUnmarshalError() {

@@ -111,7 +111,7 @@ public class AtLeastOnceSocket extends CustomSocket {
             ackData.put("ack", true);
             
             Parser.Message ackMessage = new Parser.Message(
-                    requestId, ACK_SERVICE_ID, RequestType.LOST, "ACK", ackData);
+                    requestId, ACK_SERVICE_ID, RequestType.ACK, "ACK", ackData);
             
             byte[] ackBytes = parser.marshall(ackMessage);
             sendDatagram(ackBytes, address, port);

@@ -27,7 +27,7 @@ class RequestType(IntEnum):
     REQUEST = 0
     RESPONSE = 1
     ERROR = 2
-    LOST = 3
+    ACK = 3
 
     def label(self):
         match self:
@@ -37,8 +37,8 @@ class RequestType(IntEnum):
                 return "response"
             case RequestType.ERROR:
                 return "error"
-            case RequestType.LOST:
-                return "lost"
+            case RequestType.ACK:
+                return "ack"
 
 
 class UnmarshalResult():
@@ -59,6 +59,12 @@ class ErrorObj(BaseModel):
     def __init__(self, error_message: str = ""):
         super().__init__()
         self.errorMessage = error_message
+
+class ACKObj(BaseModel):    
+    obj_name = "ACKObj"
+
+    def __init__(self):
+        super().__init__()
 
 class ListAvailabilityReq(BaseModel):
     obj_name = "ListAvailabilityReq"

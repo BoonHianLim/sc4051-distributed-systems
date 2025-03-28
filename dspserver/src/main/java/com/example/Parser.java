@@ -143,15 +143,16 @@ public class Parser {
         int serviceId = buffer.getShort() & 0xFFFF;
         RequestType isRequest = RequestType.fromCode(buffer.get());
 
+        if (isRequest == RequestType.ACK) {
+            return new Message(requestId, serviceId, isRequest, "ACK", data);
+        }
         // Get the data format for unmarshalling
         ServiceInfo serviceInfo = services.get(serviceId);
         if (serviceInfo == null) {
             throw new IllegalArgumentException("Unknown service ID: " + serviceId);
         }
 
-        if (isRequest == RequestType.ERROR || isRequest == RequestType.LOST) {
-            throw new IllegalArgumentException("Received error response");
-        }
+        
         String formatName = isRequest == RequestType.REQUEST ? serviceInfo.request : serviceInfo.response;
         DataFormat dataFormat = dataFormats.get(formatName);
         if (dataFormat == null) {
@@ -195,11 +196,13 @@ public class Parser {
      * @throws IllegalArgumentException if the format name is not found
      */
     public byte[] marshall(Message message) {
-        if (message.getRequestType() == RequestType.REQUEST || message.getRequestType() == RequestType.LOST) {
+        if (message.getRequestType() == RequestType.REQUEST || message.getRequestType() == RequestType.RESPONSE) {
             return marshalNormal(message);
         } else if (message.getRequestType() == RequestType.ERROR) {
             return marshalError(message);
-        } else {
+        } else if (message.getRequestType() == RequestType.ACK) {
+            return marshalAck(message);
+        }else  {
             throw new IllegalArgumentException("Unsupported request type: " + message.getRequestType());
         }
     }
@@ -248,6 +251,16 @@ public class Parser {
         return buffer.array();
     }
 
+    private byte[] marshalAck(Message messsage) {
+        int size = 16 + 2 + 1; // UUID (16 bytes) + service ID (2 bytes) + is_request flag (1 byte)
+        ByteBuffer buffer = ByteBuffer.allocate(size);
+        buffer.order(ByteOrder.BIG_ENDIAN);
+
+        buffer.put(marshalUUID(messsage.getRequestId()));
+        buffer.putShort((short) messsage.getServiceId());
+        buffer.put((byte) messsage.getRequestType().getCode());
+        return buffer.array();
+    }
     /**
      * Calculates the required buffer size for marshalling.
      */

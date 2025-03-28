@@ -4,7 +4,7 @@ public enum RequestType {
     REQUEST(0),
     RESPONSE(1),
     ERROR(2),
-    LOST(3);
+    ACK(3);
 
     private final int code;
 

@@ -175,6 +175,8 @@ public abstract class CustomSocket implements AutoCloseable {
             }
         } else if (requestType == RequestType.ERROR) {
             formatName = "error";
+        } else if (requestType == RequestType.ACK) {
+            formatName = "ACK"; 
         }
 
         if (formatName == null) {
