@@ -214,7 +214,7 @@ while True:
                     print(
                         f"Listening successful! Start listening now for {monitoring_period_in_minutes} minutes.")
                     while time.time() < end_time:
-                        # Listen for notifications
+                        # Busy wait for notifications
                         response: Optional[UnmarshalResult] = socket.non_blocking_listen()
                         logger.info(response)
                         if response:
