@@ -2,7 +2,7 @@ from enum import IntEnum
 import logging
 import os
 import json
-from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, UnmarshalResult
+from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, UnmarshalResult
 from src.comm.parser import Parser
 from src.comm.socket import AtLeastOnceSocket, AtMostOnceSocket, Socket
 from src.utils.logger import setup_logger
@@ -86,7 +86,7 @@ while True:
                 logger.info("User confirmed query.")
                 print("Sending query request...")
                 request = ListAvailabilityReq(facility_name, result)
-                response: ListAvailabilityResp = socket.send(request, 1, True)
+                response: ListAvailabilityResp = socket.send(request, 1, RequestType.REQUEST)
                 logger.info(response)
                 availabilities_list = response.availabilities.split(":")
                 for availability in availabilities_list:
@@ -119,7 +119,8 @@ while True:
                 logger.info("User confirmed booking.")
                 print("Sending booking request...")
                 request = BookFacilityReq(facility_name, time_slot)
-                response: BookFacilityResp = socket.send(request, 2, True)
+                response: BookFacilityResp = socket.send(
+                    request, 2, RequestType.REQUEST)
                 logger.info(response)
                 print(f"Booking successful! Your confirmation ID is {response.confirmationID}.")
             else:
@@ -140,7 +141,8 @@ while True:
                 logger.info("User confirmed change.")
                 print("Sending change request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response: EditBookingResp = socket.send(request, 3, True)
+                response: EditBookingResp = socket.send(
+                    request, 3,  RequestType.REQUEST)
                 logger.info(response)
                 print("Change successful!")
             else:
@@ -162,7 +164,8 @@ while True:
                 print("Sending listen request...")
                 request = RegisterCallbackReq(
                     facility_name, monitoring_period_in_minutes)
-                response: RegisterCallbackResp = socket.send(request, 4, True)
+                response: RegisterCallbackResp = socket.send(
+                    request, 4,  RequestType.REQUEST)
                 logger.info(response)
                 print(
                     f"Listening successful! Start listening now for {monitoring_period_in_minutes} minutes.")
@@ -186,7 +189,8 @@ while True:
                 logger.info("User confirmed cancel.")
                 print("Sending cancel request...")
                 request = CancelBookingReq(confirmation_id)
-                response: CancelBookingResp = socket.send(request, 6, True)
+                response: CancelBookingResp = socket.send(
+                    request, 6, RequestType.REQUEST)
                 logger.info(response)
                 print("Cancel successful!")
             else:
@@ -207,7 +211,8 @@ while True:
                 logger.info("User confirmed extend.")
                 print("Sending extend request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response: EditBookingResp = socket.send(request, 7, True)
+                response: EditBookingResp = socket.send(
+                    request, 7, RequestType.REQUEST)
                 logger.info(response)
                 print("Extend successful!")
             else:
