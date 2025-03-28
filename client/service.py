@@ -57,7 +57,6 @@ while True:
     """)
 
     options = safe_input("Enter an option: ", "int")
-
     class BookingOptions(IntEnum):
         QUERY = 1
         BOOK = 2
@@ -86,11 +85,16 @@ while True:
                 logger.info("User confirmed query.")
                 print("Sending query request...")
                 request = ListAvailabilityReq(facility_name, result)
-                response: ListAvailabilityResp = socket.send(request, 1, RequestType.REQUEST)
-                logger.info(response)
-                availabilities_list = response.availabilities.split(":")
-                for availability in availabilities_list:
-                    print(availability)
+                response, err = socket.send(request, 1, RequestType.REQUEST)
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                else:
+                    availability_response: ListAvailabilityResp = response
+                    logger.info(availability_response)
+                    availabilities_list = availability_response.availabilities.split(":")
+                    for availability in availabilities_list:
+                        print(availability)
             else:
                 logger.info("User cancelled query.")
                 print("Operation cancelled.")
@@ -119,10 +123,15 @@ while True:
                 logger.info("User confirmed booking.")
                 print("Sending booking request...")
                 request = BookFacilityReq(facility_name, time_slot)
-                response: BookFacilityResp = socket.send(
+                response, err = socket.send(
                     request, 2, RequestType.REQUEST)
-                logger.info(response)
-                print(f"Booking successful! Your confirmation ID is {response.confirmationID}.")
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                else:
+                    booking_response: BookFacilityResp = response
+                    logger.info(booking_response)
+                    print(f"Booking successful! Confirmation ID: {booking_response.confirmationID}")
             else:
                 logger.info("User cancelled booking.")
                 print("Operation cancelled.")
@@ -141,10 +150,15 @@ while True:
                 logger.info("User confirmed change.")
                 print("Sending change request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response: EditBookingResp = socket.send(
+                response, err = socket.send(
                     request, 3,  RequestType.REQUEST)
-                logger.info(response)
-                print("Change successful!")
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                else:
+                    change_response: EditBookingResp = response
+                    logger.info(change_response)
+                    print("Change successful!")
             else:
                 logger.info("User cancelled change.")
                 print("Operation cancelled.")
@@ -164,16 +178,21 @@ while True:
                 print("Sending listen request...")
                 request = RegisterCallbackReq(
                     facility_name, monitoring_period_in_minutes)
-                response: RegisterCallbackResp = socket.send(
-                    request, 4,  RequestType.REQUEST)
-                logger.info(response)
-                print(
-                    f"Listening successful! Start listening now for {monitoring_period_in_minutes} minutes.")
-                while True:
-                    response: UnmarshalResult = socket.listen()
-                    logger.info(response)
-                    notify_request: NotifyCallbackReq = response.obj
-                    print(f"Notification received for {notify_request.facilityName}.")
+                response, err = socket.send(
+                    request, 4, RequestType.REQUEST)
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                else:
+                    listen_response: RegisterCallbackResp = response
+                    logger.info(listen_response)
+                    print(
+                        f"Listening successful! Start listening now for {monitoring_period_in_minutes} minutes.")
+                    while True:
+                        response: UnmarshalResult = socket.listen()
+                        logger.info(response)
+                        notify_request: NotifyCallbackReq = response.obj
+                        print(f"Notification received for {notify_request.facilityName}.")
             else:
                 logger.info("User cancelled listen.")
                 print("Operation cancelled.")
@@ -189,10 +208,15 @@ while True:
                 logger.info("User confirmed cancel.")
                 print("Sending cancel request...")
                 request = CancelBookingReq(confirmation_id)
-                response: CancelBookingResp = socket.send(
+                response, err = socket.send(
                     request, 6, RequestType.REQUEST)
-                logger.info(response)
-                print("Cancel successful!")
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                else:
+                    cancel_response: CancelBookingResp = response
+                    logger.info(cancel_response)
+                    print("Cancel successful!")
             else:
                 logger.info("User cancelled cancel.")
                 print("Operation cancelled.")
@@ -211,10 +235,15 @@ while True:
                 logger.info("User confirmed extend.")
                 print("Sending extend request...")
                 request = EditBookingReq(confirmation_id, minute_offset)
-                response: EditBookingResp = socket.send(
+                response, err = socket.send(
                     request, 7, RequestType.REQUEST)
-                logger.info(response)
-                print("Extend successful!")
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                else:
+                    extend_response: EditBookingResp = response
+                    logger.info(extend_response)
+                    print("Extend successful!")
             else:
                 logger.info("User cancelled extend.")
                 print("Operation cancelled.")

@@ -1,9 +1,9 @@
 import logging
 from socket import AF_INET, SOCK_DGRAM, socket, timeout
-from typing import Optional
+from typing import Optional, Union
 from uuid import uuid4
 
-from src.comm.types import BaseModel, RequestType, UnmarshalResult
+from src.comm.types import BaseModel, ErrorObj, RequestType, UnmarshalResult
 from src.comm.parser import Parser
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class Socket():
     def __init__(self):
         pass
 
-    def send(self, message: any, service_id: int, request_type: RequestType) -> any:
+    def send(self, message: any, service_id: int, request_type: RequestType) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         pass
 
     def listen(self):
@@ -31,7 +31,7 @@ class AtLeastOnceSocket(Socket):
         logger.info(
             "[AtLeastOnceSocket] Socket created at %s:%s", ip_addr, port)
 
-    def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
+    def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "127.0.0.1", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         request_id = uuid4()
         logger.info("[AtLeastOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
@@ -44,7 +44,12 @@ class AtLeastOnceSocket(Socket):
             self.socket.sendto(msg_in_bytes, addr)
             logger.debug(f"[AtLeastOnceSocket] Sent request.")
             result = self.listen()
-        return result.obj
+        if result.request_type == RequestType.ERROR:
+            logger.error("[AtLeastOnceSocket] Error: %s", result.obj)
+            assert isinstance(
+                result.obj, ErrorObj), "Error object is not of type ErrorObj"
+            return None, result.obj
+        return result.obj, None
 
     def listen(self) -> Optional[UnmarshalResult]:
         result = None
@@ -85,7 +90,7 @@ class AtMostOnceSocket(Socket):
                     ip_addr, port)
 
     def send(self, message: any, service_id: int, request_type: RequestType,
-             server_addr: str = "127.0.0.1", port: int = 12000) -> BaseModel:
+             server_addr: str = "127.0.0.1", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         request_id = uuid4()
         logger.info("[AtMostOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
@@ -97,7 +102,17 @@ class AtMostOnceSocket(Socket):
             self.socket.sendto(msg_in_bytes, addr)
             logger.debug(f"[AtLeastOnceSocket] Sent request.")
             result = self.listen()
-        return result.obj
+
+        ack_packet_in_bytes = self.parser.marshall(
+            request_id, service_id, RequestType.ACK, None)
+        self.socket.sendto(ack_packet_in_bytes, addr)
+
+        if result.request_type == RequestType.ERROR:
+            logger.error("[AtLeastOnceSocket] Error: %s", result.obj)
+            assert isinstance(
+                result.obj, ErrorObj), "Error object is not of type ErrorObj"
+            return None, result.obj
+        return result.obj, None
 
     def listen(self) -> Optional[UnmarshalResult]:
         result = None
