@@ -2,6 +2,7 @@ from enum import IntEnum
 import logging
 import os
 import json
+import time
 from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, UnmarshalResult
 from src.comm.parser import Parser
 from src.comm.socket import AtLeastOnceSocket, AtMostOnceSocket, Socket
@@ -199,6 +200,8 @@ while True:
                     facility_name, monitoring_period_in_minutes)
                 response, err = socket.send(
                     request, 4, RequestType.REQUEST)
+                current_time = time.time()
+                end_time = current_time + (monitoring_period_in_minutes * 60)
                 if err is not None:
                     logger.error(err)
                     print(f"Receive error from server: {err.errorMessage}")
@@ -207,12 +210,14 @@ while True:
                     logger.info(listen_response)
                     print(
                         f"Listening successful! Start listening now for {monitoring_period_in_minutes} minutes.")
-                    while True:
+                    while time.time() < end_time:
+                        # Listen for notifications
                         response: UnmarshalResult = socket.listen()
                         logger.info(response)
                         notify_request: NotifyCallbackReq = response.obj
                         print(
-                            f"Notification received for {notify_request.facilityName}.")
+                            f"Notification received for {notify_request.availabilities}.")
+                    print(f"Listening period of {monitoring_period_in_minutes} minutes has ended. Stopping listening.")
             else:
                 logger.info("User cancelled listen.")
                 print("Operation cancelled.")

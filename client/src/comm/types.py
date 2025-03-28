@@ -133,9 +133,9 @@ class RegisterCallbackResp(BaseModel):
 class NotifyCallbackReq(BaseModel):
     obj_name = "NotifyCallbackReq"
 
-    def __init__(self, facility_name: str = ""):
+    def __init__(self, availabilities: str = ""):
         super().__init__()
-        self.facilityName = facility_name
+        self.availabilities = availabilities
 
 class NotifyCallbackResp(BaseModel):
     def __init__(self, success: bool = False):
