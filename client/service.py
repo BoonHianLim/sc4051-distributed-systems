@@ -3,6 +3,9 @@ import logging
 import os
 import json
 import time
+from socket import timeout
+from typing import Optional
+
 from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, UnmarshalResult
 from src.comm.parser import Parser
 from src.comm.socket import AtLeastOnceSocket, AtMostOnceSocket, Socket
@@ -212,11 +215,13 @@ while True:
                         f"Listening successful! Start listening now for {monitoring_period_in_minutes} minutes.")
                     while time.time() < end_time:
                         # Listen for notifications
-                        response: UnmarshalResult = socket.listen()
+                        response: Optional[UnmarshalResult] = socket.non_blocking_listen()
                         logger.info(response)
-                        notify_request: NotifyCallbackReq = response.obj
-                        print(
-                            f"Notification received for {notify_request.availabilities}.")
+                        if response:
+                            notify_request: NotifyCallbackReq = response.obj
+                            print(
+                                f"Notification received for {notify_request.availabilities}.")
+
                     print(f"Listening period of {monitoring_period_in_minutes} minutes has ended. Stopping listening.")
             else:
                 logger.info("User cancelled listen.")

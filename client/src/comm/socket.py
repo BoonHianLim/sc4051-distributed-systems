@@ -1,5 +1,6 @@
+import errno
 import logging
-from socket import AF_INET, SOCK_DGRAM, socket, timeout
+from socket import AF_INET, SOCK_DGRAM, socket, timeout, error
 from typing import Optional, Union
 from uuid import uuid4
 
@@ -19,7 +20,8 @@ class Socket():
     def listen(self):
         pass
 
-
+    def non_blocking_listen(self):
+        pass
 class AtLeastOnceSocket(Socket):
     def __init__(self, parser: Parser, timeout_seconds: int = 60, ip_addr: str = "127.0.0.1", port: int = 11999):
         super().__init__()
@@ -58,6 +60,27 @@ class AtLeastOnceSocket(Socket):
             result = self.parser.unmarshall(recv_bytes)
         except timeout:
             logger.error("Socket timeout error")
+        except OSError as os_error:
+            logger.error("Socket error: %s", os_error)
+        except Exception as e:
+            logger.error("Error: %s", e)
+        finally:
+            return result
+
+    def non_blocking_listen(self) -> Optional[UnmarshalResult]:
+        result = None
+        try:
+            recv_bytes = self.socket.recv(1024, socket.MSG_DONTWAIT)
+            result = self.parser.unmarshall(recv_bytes)
+        except error as e:
+            err = e.args[0]
+            if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
+                # No data available to read, continue without error
+                pass
+            else:
+                logger.error("Socket error: %s", e)
+        except timeout:
+            pass
         except OSError as os_error:
             logger.error("Socket error: %s", os_error)
         except Exception as e:
@@ -128,6 +151,20 @@ class AtMostOnceSocket(Socket):
         finally:
             return result
 
+    def non_blocking_listen(self) -> Optional[UnmarshalResult]:
+        result = None
+        try:
+            recv_bytes = self.socket.recv(1024, socket.MSG_DONTWAIT)
+            result = self.parser.unmarshall(recv_bytes)
+        except timeout:
+            pass
+        except OSError as os_error:
+            logger.error("Socket error: %s", os_error)
+        except Exception as e:
+            logger.error("Error: %s", e)
+        finally:
+            return result
+        
     def close(self):
         # shut socket down
         self.socket.close()
