@@ -6,7 +6,7 @@ import time
 from socket import timeout
 from typing import Optional
 
-from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, UnmarshalResult
+from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, SocketSwitchingReq, UnmarshalResult
 from src.comm.parser import Parser
 from src.comm.socket import AtLeastOnceSocket, AtMostOnceSocket, Socket
 from src.utils.logger import setup_logger
@@ -50,13 +50,13 @@ while socket is None:
 at_least_once = True
 
 print(r'''
-   ___                     _               _  _                    
-  | _ )    ___     ___    | |__     o O O | \| |    ___   __ __ __ 
-  | _ \   / _ \   / _ \   | / /    o      | .` |   / _ \  \ V  V / 
-  |___/   \___/   \___/   |_\_\   TS__[O] |_|\_|   \___/   \_/\_/  
-_|"""""|_|"""""|_|"""""|_|"""""| {======|_|"""""|_|"""""|_|"""""|  
-"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'./o--000'"`-0-0-'"`-0-0-'"`-0-0-'  
-      
+   ___                     _               _  _
+  | _ )    ___     ___    | |__     o O O | \| |    ___   __ __ __
+  | _ \   / _ \   / _ \   | / /    o      | .` |   / _ \  \ V  V /
+  |___/   \___/   \___/   |_\_\   TS__[O] |_|\_|   \___/   \_/\_/
+_|"""""|_|"""""|_|"""""|_|"""""| {======|_|"""""|_|"""""|_|"""""|
+"`-0-0-'"`-0-0-'"`-0-0-'"`-0-0-'./o--000'"`-0-0-'"`-0-0-'"`-0-0-'
+
 Welcome to Book Now. We are a facility booking service that allows you to book facilities in your area.
 We have a wide range of facilities available for booking, such as sports facilities, meeting rooms, and more.
 ''')
@@ -86,6 +86,7 @@ while True:
         CANCEL = 5
         EXTEND = 6
         SWITCH = 7
+
     match options:
         case BookingOptions.QUERY:
             logger.info("User selected option 1: Query for availabilities")
@@ -222,7 +223,8 @@ while True:
                             print(
                                 f"Notification received for {notify_request.availabilities}.")
 
-                    print(f"Listening period of {monitoring_period_in_minutes} minutes has ended. Stopping listening.")
+                    print(
+                        f"Listening period of {monitoring_period_in_minutes} minutes has ended. Stopping listening.")
             else:
                 logger.info("User cancelled listen.")
                 print("Operation cancelled.")
@@ -285,6 +287,15 @@ while True:
             user_confirmation = safe_input(
                 "Do you want to switch the socket type? Press 1 to continue.", "int")
             if user_confirmation == 1:
+                request = SocketSwitchingReq(str(socket))
+                response, err = socket.send(
+                    request, 8, RequestType.REQUEST)
+                if err is not None:
+                    logger.error(err)
+                    print(f"Receive error from server: {err.errorMessage}")
+                    continue
+                socket_switch_response: SocketSwitchingReq = response
+                logger.info(socket_switch_response)
                 socket.close()
                 at_least_once = not at_least_once
                 socket = None
@@ -307,7 +318,7 @@ while True:
                     except Exception as e:
                         # Some other error occurred, raise it
                         raise e
-                print("Successfully changed socket type to AtLeastOnceSocket" if at_least_once else "Successfully changed socket type to AtMostOnceSocket")
+                print(f"Successfully changed socket type to {str(socket)}")
             else:
                 logger.info("User cancelled socket type change. Current socket type is still AtLeastOnceSocket" if isinstance(
                     socket, AtLeastOnceSocket) else "User cancelled socket type change. Current socket type is still AtMostOnceSocket")

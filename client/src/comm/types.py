@@ -171,3 +171,17 @@ class ExtendBookingResp(BaseModel):
     def __init__(self, success: bool = False):
         super().__init__()
         self.success = success
+
+class SocketSwitchingReq(BaseModel):
+    obj_name = "SocketSwitchingReq"
+
+    def __init__(self, switch: str = ""):
+        super().__init__()
+        self.switch = switch
+    
+class SocketSwitchingResp(BaseModel):
+    obj_name = "SocketSwitchingResp"
+
+    def __init__(self, message: bool = False):
+        super().__init__()
+        self.message = message

@@ -138,8 +138,7 @@
         "name": "SocketSwitchingResp",
         "fields": [
             {
-                "message": "bool",
-                "error": "str"
+                "message": "bool"
             }
         ]
     }
