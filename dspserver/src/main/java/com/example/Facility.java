@@ -13,8 +13,8 @@ public class Facility {
     private List<Booking> bookings;
     
     // Default operating hours
-    private static final int OPENING_HOUR = 8;  // 8 AM
-    private static final int CLOSING_HOUR = 20; // 8 PM
+    private static final int OPENING_HOUR = 8;  // 12 AM
+    private static final int CLOSING_HOUR = 20; // 11 PM 
     private static final int TIME_SLOT_DURATION = 60; // minutes
 
     public Facility(String facilityName) {
@@ -32,6 +32,14 @@ public class Facility {
     public boolean checkAvailability(String timePeriod) {
         // Decode the requested time period
         TimeSlotDecoder requestedSlot = new TimeSlotDecoder(timePeriod);
+
+        if (requestedSlot.getStartHour() < 8) {
+            return false; // Outside of operating hours
+        }
+
+        if (requestedSlot.getEndHour() == 20 && requestedSlot.getEndMin() > 0 || requestedSlot.getEndHour() >= 21 ) {
+            return false;
+        }
         
         // Check if there are any overlapping bookings
         for (Booking booking : bookings) {

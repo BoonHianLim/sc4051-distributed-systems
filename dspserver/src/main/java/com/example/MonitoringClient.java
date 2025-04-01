@@ -77,7 +77,8 @@ public class MonitoringClient {
      */
     public boolean isExpired() {
         long currentTime = System.currentTimeMillis();
-        long expirationTimeMillis = registrationTime + (expirationTime * 1000L);
+        // Convert minutes to milliseconds (60 seconds * 1000 milliseconds)
+        long expirationTimeMillis = registrationTime + (expirationTime * 60 * 1000L);
         return currentTime > expirationTimeMillis;
     }
 

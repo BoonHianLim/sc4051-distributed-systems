@@ -114,6 +114,17 @@ public class BookingService {
             return "Error: Facility is not available during the requested time slot";
         }
 
+        TimeSlotDecoder timeSlotDecoder = new TimeSlotDecoder(timeSlot);
+        if (!timeSlotDecoder.getStartDay().equals(timeSlotDecoder.getEndDay())) {
+            return "Error: Facility is not available for more than one day";
+        }
+        if (timeSlotDecoder.getStartHour() < 8) {
+            return "Error: Facility is not available before 8 AM";
+        }
+        if (timeSlotDecoder.getEndHour() == 20 && timeSlotDecoder.getEndMin() > 0 || timeSlotDecoder.getEndHour() >= 21) {
+            return "Error: Facility is not available after 8 PM";
+        }
+
         try {
             // Create a new booking
             Booking booking = new Booking(facilityName, timeSlot);
@@ -257,22 +268,26 @@ public class BookingService {
             // Temporarily remove the booking from the facility
             facility.cancelBooking(booking);
             
-            // Calculate the duration of the existing booking
-            TimeSlotDecoder decoder = booking.getTimeSlotDecoder();
-            int currentDuration = decoder.getDurationMinutes();
-            
-            // Use shiftBooking to extend the booking
-            // We're not actually shifting the start time, but extending the end time
-            // This can be achieved by first shifting forward by current duration + additional minutes
-            // and then shifting back by current duration
-            booking.shiftBooking(currentDuration + additionalMinutes);
-            booking.shiftBooking(-currentDuration);
+            // Extend the booking
+            booking.extendBooking(additionalMinutes);
+
+            // check the day of the booking
+            TimeSlotDecoder timeSlotDecoder = new TimeSlotDecoder(booking.getTimeSlot());
+
+            if (!timeSlotDecoder.getStartDay().equals(timeSlotDecoder.getEndDay())) {
+                throw new IllegalStateException("Cannot extend booking: booking spans multiple days");
+            }
+            if (timeSlotDecoder.getEndHour() == 20 && timeSlotDecoder.getEndMin() > 0 || timeSlotDecoder.getEndHour() >= 21) {
+                throw new IllegalStateException("Cannot extend booking: booking ends after 8 PM");
+            }
+            if (additionalMinutes > 6*24*60) {
+                throw new IllegalStateException("Cannot extend booking: maximum extension is 6 days");
+            }
             
             // Check if the new time slot is available
             if (!facility.checkAvailability(booking.getTimeSlot())) {
                 // Restore the original time slot
-                booking.shiftBooking(currentDuration);
-                booking.shiftBooking(-(currentDuration + additionalMinutes));
+                booking.extendBooking(-additionalMinutes);
                 
                 // Re-add the original booking
                 facility.addBooking(booking);
@@ -293,9 +308,14 @@ public class BookingService {
 
     public boolean registerClient(String facilityName, int monitorPeriodinMinutes, int port, InetAddress clientAddress) {
 
-        MonitoringClient tempClient = new MonitoringClient(clientAddress, port, monitorPeriodinMinutes, facilityName);
-        clients.add(tempClient);
-        return true;
+        for (Facility facility: facilities) {
+            if (facility.getFacilityName().equals(facilityName)) {
+                MonitoringClient tempClient = new MonitoringClient(clientAddress, port, monitorPeriodinMinutes, facilityName);
+                clients.add(tempClient);
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean deregisterClient(InetAddress clientAddress, int port) {

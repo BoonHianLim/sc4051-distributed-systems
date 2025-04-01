@@ -28,6 +28,47 @@ public class Booking {
         this.timeSlotDecoder = new TimeSlotDecoder(timeSlot);
     }
     /**
+     * Extends the booking by a specified number of minutes.
+     * 
+     * @param minute the number of minutes to extend the booking
+     */
+    public void extendBooking(int minute) {
+        // Extract current booking details
+        String startDay = timeSlotDecoder.getStartDay();
+        int startHour = timeSlotDecoder.getStartHour();
+        int startMin = timeSlotDecoder.getStartMin();
+        
+        String endDay = timeSlotDecoder.getEndDay();
+        int endHour = timeSlotDecoder.getEndHour();
+        int endMin = timeSlotDecoder.getEndMin();
+
+        // Create reference week starting with Monday
+        LocalDateTime baseDateTime = LocalDateTime.of(2025, 1, 6, 0, 0);
+
+        // Calculate the day offsets based on the day names
+        int startDayOffset = TimeSlotDecoder.DAY_TO_INDEX.get(startDay);
+        int endDayOffset = TimeSlotDecoder.DAY_TO_INDEX.get(endDay);
+        
+        // Create LocalDateTime objects for start and end times
+        LocalDateTime startDateTime = baseDateTime.plusDays(startDayOffset)
+                                                 .withHour(startHour)
+                                                 .withMinute(startMin);
+        
+        LocalDateTime endDateTime = baseDateTime.plusDays(endDayOffset)
+                                               .withHour(endHour)
+                                               .withMinute(endMin);
+        
+        // Apply the minute offset
+        LocalDateTime newEndDateTime = endDateTime.plusMinutes(minute);
+        
+        // Format the new time slot string
+        String newTimeSlot = formatTimeSlot(startDateTime, newEndDateTime);
+        
+        // Update the booking
+        this.timeSlot = newTimeSlot;
+        this.timeSlotDecoder = new TimeSlotDecoder(newTimeSlot);
+    }
+    /**
      * Shifts the booking time by the specified number of minutes.
      * 
      * @param minuteOffset the number of minutes to shift the booking time
