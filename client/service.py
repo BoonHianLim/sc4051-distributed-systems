@@ -36,7 +36,7 @@ while socket is None:
     try:
         socket: Socket = AtLeastOnceSocket(parser, port=bind_port)
     except OSError as e:
-        if "Address already in use" in str(e):
+        if "Address already in use" in str(e) or "Only one usage" in str(e):
             # Address is already in use, try again after 1 second
             print(f"Port {bind_port} is already in use. Retrying...")
             bind_port += 1
