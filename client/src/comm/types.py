@@ -40,6 +40,19 @@ class RequestType(IntEnum):
             case RequestType.ACK:
                 return "ack"
 
+class SocketLostType(IntEnum):
+    LOST_IN_CLIENT_TO_SERVER = 0
+    LOST_IN_SERVER_TO_CLIENT = 1
+    MIXED = 2
+
+    def label(self):
+        match self:
+            case SocketLostType.LOST_IN_CLIENT_TO_SERVER:
+                return "lost in client to server"
+            case SocketLostType.LOST_IN_SERVER_TO_CLIENT:
+                return "lost in server to client"
+            case SocketLostType.MIXED:
+                return "mixed"
 
 class UnmarshalResult():
     def __init__(self, obj: BaseModel, request_id: str, service_id: int, request_type: RequestType):

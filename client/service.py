@@ -6,7 +6,7 @@ import time
 from socket import timeout
 from typing import Optional
 
-from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, SocketSwitchingReq, UnmarshalResult
+from src.comm.types import BookFacilityReq, BookFacilityResp, CancelBookingReq, CancelBookingResp, EditBookingReq, EditBookingResp, ListAvailabilityReq, ListAvailabilityResp, NotifyCallbackReq, RegisterCallbackReq, RegisterCallbackResp, RequestType, SocketLostType, SocketSwitchingReq, UnmarshalResult
 from src.comm.parser import Parser
 from src.comm.socket import AtLeastOnceSocket, AtMostOnceSocket, Socket
 from src.utils.logger import setup_logger
@@ -73,7 +73,8 @@ while True:
 5. Cancel a booking
 6. Extends a booking
 7. Switch Socket Type
-8. Exit
+8. Modify Packet Loss Settings
+9. Exit
     """)
 
     options = safe_input("Enter an option: ", "int")
@@ -86,6 +87,7 @@ while True:
         CANCEL = 5
         EXTEND = 6
         SWITCH = 7
+        LOSE_PACKET = 8
 
     match options:
         case BookingOptions.QUERY:
@@ -322,6 +324,23 @@ while True:
             else:
                 logger.info("User cancelled socket type change. Current socket type is still AtLeastOnceSocket" if isinstance(
                     socket, AtLeastOnceSocket) else "User cancelled socket type change. Current socket type is still AtMostOnceSocket")
+                print("Operation cancelled.")
+            print()
+        case BookingOptions.LOSE_PACKET:
+            logger.info("User selected option 8: Modify Packet Loss Settings")
+            print(f"Current packet loss settings: {socket.loss_type.label()} with loss rate {socket.loss_rate}")
+            user_confirmation = safe_input(
+                "Do you want to modify the packet loss settings? Press 1 to continue.", "int")
+            if user_confirmation == 1:
+                loss_type = safe_input(
+                    "Enter the packet loss type (0 for lost in client to server, 1 for lost in server to client, 2 for mixed):", "int", min_val=0, max_val=2)
+                loss_rate = safe_input(
+                    "Enter the packet loss rate (0.0–1.0):", "float", min_val=0.0, max_val=1.0)
+                socket.loss_type = SocketLostType(loss_type)
+                socket.loss_rate = loss_rate
+                print(f"Successfully changed packet loss settings to {socket.loss_type.label()} with loss rate {socket.loss_rate}")
+            else:
+                logger.info("User cancelled packet loss settings change.")
                 print("Operation cancelled.")
             print()
         case _:

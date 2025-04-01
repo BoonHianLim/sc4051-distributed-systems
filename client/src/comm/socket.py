@@ -1,10 +1,11 @@
 import errno
 import logging
+import random
 from socket import AF_INET, SOCK_DGRAM, socket, timeout, error
 from typing import Optional, Union
 from uuid import uuid4
 
-from src.comm.types import BaseModel, ErrorObj, RequestType, UnmarshalResult
+from src.comm.types import BaseModel, ErrorObj, RequestType, SocketLostType, UnmarshalResult
 from src.comm.parser import Parser
 
 logger = logging.getLogger(__name__)
@@ -12,8 +13,24 @@ logger = logging.getLogger(__name__)
 
 class Socket():
     def __init__(self):
-        pass
+        self.loss_rate = 0.0  # Default loss rate
+        self.loss_type = SocketLostType.LOST_IN_CLIENT_TO_SERVER  # Default loss type
 
+    def set_loss_rate(self, loss_rate: float):
+        self.loss_rate = loss_rate
+
+    def set_loss_type(self, loss_type: SocketLostType):
+        self.loss_type = loss_type
+
+    def has_lost(self, before_send_to_server: bool) -> bool:
+        if before_send_to_server and self.loss_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER:
+            return self.loss_rate > random.random()
+        elif not before_send_to_server and self.loss_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT:
+            return self.loss_rate > random.random()
+        elif self.loss_type == SocketLostType.MIXED:
+            return self.loss_rate > random.random()
+        return False
+    
     def send(self, message: any, service_id: int, request_type: RequestType) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         pass
 
@@ -30,6 +47,7 @@ class AtLeastOnceSocket(Socket):
         super().__init__()
         self.parser = parser
         self.socket = socket(AF_INET, SOCK_DGRAM)
+        self.timeout_seconds = timeout_seconds
         self.socket.settimeout(timeout_seconds)
         addr = (ip_addr, port)
         self.socket.bind(addr)
@@ -41,15 +59,16 @@ class AtLeastOnceSocket(Socket):
         self.socket.setblocking(False)
         try:
             while True:
-                data, addr = self.socket.recvfrom(4096)
+                data, addr = self.socket.recvfrom(1024)
                 logger.info(f"Cleared packet from {addr}: {data}")
         except BlockingIOError:
             # Buffer is empty
             pass
         finally:
             self.socket.setblocking(True)  # Restore blocking mode
+            self.socket.settimeout(self.timeout_seconds)  # Restore timeout
         logger.debug("[AtLeastOnceSocket] Buffer cleared")
-        
+    
     def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "127.0.0.1", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         request_id = uuid4()
         logger.info("[AtLeastOnceSocket] To server %s:%s: Sending request %s: %s",
@@ -60,13 +79,29 @@ class AtLeastOnceSocket(Socket):
         addr = (server_addr, port)
         result = None
         while result is None:
-            self._clear_buffer()  # Clear the buffer before sending
-            self.socket.sendto(msg_in_bytes, addr)
+            request_lost = self.has_lost(True)
+            if request_lost:
+                logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server")
+            else:
+                self._clear_buffer()  # Clear the buffer before sending
+                self.socket.sendto(msg_in_bytes, addr)
             logger.debug(f"[AtLeastOnceSocket] Sent request.")
+
             result = self.listen()
+            if result is None:
+                if request_lost:
+                    logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server. Receive None as we never send the packet to server. Retrying,")
+                    print("Packet has lost in transit. Retrying...")
+                else:
+                    logger.error("[AtLeastOnceSocket] No response received. Timeout. Retrying...")
+                continue
             if result.request_id != request_id:
                 logger.error(
                     "[AtLeastOnceSocket] Received response with different request ID: %s", result.request_id)
+                result = None
+            if self.has_lost(False):
+                logger.info(
+                    "[AtLeastOnceSocket] Simulated packet loss after sending to server")
                 result = None
 
         if result.request_type == RequestType.ERROR:
@@ -132,6 +167,7 @@ class AtMostOnceSocket(Socket):
         super().__init__()
         self.parser = parser
         self.socket = socket(AF_INET, SOCK_DGRAM)
+        self.timeout_seconds = timeout_seconds
         self.socket.settimeout(timeout_seconds)
         addr = (ip_addr, port)
         self.socket.bind(addr)
@@ -143,13 +179,14 @@ class AtMostOnceSocket(Socket):
         self.socket.setblocking(False)
         try:
             while True:
-                data, addr = self.socket.recvfrom(4096)
+                data, addr = self.socket.recvfrom(1024)
                 logger.info(f"Cleared packet from {addr}: {data}")
         except BlockingIOError:
             # Buffer is empty
             pass
         finally:
             self.socket.setblocking(True)
+            self.socket.settimeout(self.timeout_seconds)  # Restore timeout
         logger.debug("[AtMostOnceSocket] Buffer cleared")
 
     def send(self, message: any, service_id: int, request_type: RequestType,
@@ -162,13 +199,31 @@ class AtMostOnceSocket(Socket):
         addr = (server_addr, port)
         result = None
         while result is None:
-            self._clear_buffer()  # Clear the buffer before sending
-            self.socket.sendto(msg_in_bytes, addr)
+            request_lost = self.has_lost(True)
+            if request_lost:
+                logger.info(
+                    "[AtMostOnceSocket] Simulated packet loss before sending to server")
+            else:
+                self._clear_buffer()  # Clear the buffer before sending
+                self.socket.sendto(msg_in_bytes, addr)
             logger.debug(f"[AtMostOnceSocket] Sent request.")
             result = self.listen()
+            if result is None:
+                if request_lost:
+                    logger.info(
+                        "[AtLeastOnceSocket] Simulated packet loss before sending to server. Receive None as we never send the packet to server. Retrying,")
+                    print("Packet has lost in transit. Retrying...")
+                else:
+                    logger.error(
+                        "[AtLeastOnceSocket] No response received. Timeout. Retrying...")
+                continue
             if result.request_id != request_id:
                 logger.error(
                     "[AtMostOnceSocket] Received response with different request ID: %s", result.request_id)
+                result = None
+            if self.has_lost(False):
+                logger.info(
+                    "[AtMostOnceSocket] Simulated packet loss after sending to server")
                 result = None
 
         ack_packet_in_bytes = self.parser.marshall(
