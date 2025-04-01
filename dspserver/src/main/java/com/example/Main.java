@@ -33,6 +33,16 @@ public class Main {
                 LOGGER.info("Server created successfully");
 
                 BookingService bookingService = new BookingService();
+                // Define all facilities in an array to avoid repetition
+                String[] facilityNames = { "Gym", "Pool", "Spa", "Event Hall", "Lounge" };
+
+                // Create and add each facility in a loop
+                for (String name : facilityNames) {
+                        Facility facility = new Facility(name);
+                        bookingService.addFacility(facility);
+                }
+                LOGGER.info("Gym, Pool, Spa, Event Hall & Lounge Facilities are added for booking");
+
                 LOGGER.info("BookingService initialized");
 
                 while (true) {
@@ -86,6 +96,7 @@ public class Main {
                                                         result.get("facilityName"), result.get("timeSlot"));
 
                                         Facility newFacility = null;
+                                        Map<String, Object> bookFacilityResp = new HashMap<>();
 
                                         // First, try to find an existing facility
                                         for (Facility facility : bookingService.getAllFacilities()) {
@@ -97,33 +108,37 @@ public class Main {
 
                                         // If no matching facility was found, create a new one
                                         if (newFacility == null) {
-                                                newFacility = new Facility((String) result.get("facilityName"));
-                                                bookingService.addFacility(newFacility);
-                                        }
-
-                                        String message = bookingService.bookFacility(
-                                                        newFacility.getFacilityName(),
-                                                        (String) result.get("timeSlot"));
-
-                                        Map<String, Object> bookFacilityResp = new HashMap<>();
-                                        if (message.contains("Error:")) {
-                                                bookFacilityResp.put("errorMessage", message);
+                                                bookFacilityResp.put("errorMessage",
+                                                                "Error: Facility name is not found");
                                                 socket.send(bookFacilityResp, (UUID) result.get("request_id"),
                                                                 service_id, RequestType.ERROR,
                                                                 rawResult.getSenderIpAddress(),
                                                                 rawResult.getSenderPort());
-                                                LOGGER.info("RESPONSE | BOOK_FACILITY | Client: {} | {}",
-                                                                clientInfo, message);
                                         } else {
-                                                bookFacilityResp.put("confirmationID", message);
-                                                socket.send(bookFacilityResp, (UUID) result.get("request_id"),
-                                                                service_id, RequestType.RESPONSE,
-                                                                rawResult.getSenderIpAddress(),
-                                                                rawResult.getSenderPort());
-                                                LOGGER.info("RESPONSE | BOOK_FACILITY | Client: {} | ConfirmationID: {}",
-                                                                clientInfo, message);
-                                                notifyCallbackClients(newFacility.getFacilityName(), bookingService,
-                                                                clients, socket);
+                                                String message = bookingService.bookFacility(
+                                                                newFacility.getFacilityName(),
+                                                                (String) result.get("timeSlot"));
+
+                                                if (message.contains("Error:")) {
+                                                        bookFacilityResp.put("errorMessage", message);
+                                                        socket.send(bookFacilityResp, (UUID) result.get("request_id"),
+                                                                        service_id, RequestType.ERROR,
+                                                                        rawResult.getSenderIpAddress(),
+                                                                        rawResult.getSenderPort());
+                                                        LOGGER.info("RESPONSE | BOOK_FACILITY | Client: {} | {}",
+                                                                        clientInfo, message);
+                                                } else {
+                                                        bookFacilityResp.put("confirmationID", message);
+                                                        socket.send(bookFacilityResp, (UUID) result.get("request_id"),
+                                                                        service_id, RequestType.RESPONSE,
+                                                                        rawResult.getSenderIpAddress(),
+                                                                        rawResult.getSenderPort());
+                                                        LOGGER.info("RESPONSE | BOOK_FACILITY | Client: {} | ConfirmationID: {}",
+                                                                        clientInfo, message);
+                                                        notifyCallbackClients(newFacility.getFacilityName(),
+                                                                        bookingService,
+                                                                        clients, socket);
+                                                }
                                         }
 
                                         break;
@@ -149,16 +164,18 @@ public class Main {
                                                                 clientInfo, success);
 
                                                 String facilityName = null;
-                                                for (Booking booking: bookingService.getAllBookings()) {
-                                                        if (booking.getConfirmationID().equals(result.get("confirmationID"))) {
+                                                for (Booking booking : bookingService.getAllBookings()) {
+                                                        if (booking.getConfirmationID()
+                                                                        .equals(result.get("confirmationID"))) {
                                                                 facilityName = booking.getFacilityName();
                                                                 break;
                                                         }
                                                 }
                                                 if (facilityName != null) {
-                                                        notifyCallbackClients(facilityName, bookingService, clients, socket);
+                                                        notifyCallbackClients(facilityName, bookingService, clients,
+                                                                        socket);
                                                 }
-                                                
+
                                         } catch (Exception e) {
                                                 Map<String, Object> editBookingResp = new HashMap<>();
                                                 editBookingResp.put("errorMessage", e.getMessage());
@@ -182,20 +199,21 @@ public class Main {
                                                         (int) result.get("monitoringPeriodInMinutes"),
                                                         rawResult.getSenderPort(),
                                                         rawResult.getSenderIpAddress());
-                                        
+
                                         Map<String, Object> registerCallbackResp = new HashMap<>();
 
                                         if (registerSuccess) {
                                                 registerCallbackResp.put("success", registerSuccess);
 
-                                                socket.send(registerCallbackResp, (UUID) result.get("request_id"), service_id,
+                                                socket.send(registerCallbackResp, (UUID) result.get("request_id"),
+                                                                service_id,
                                                                 RequestType.RESPONSE, rawResult.getSenderIpAddress(),
                                                                 rawResult.getSenderPort());
-                                        }
-                                        else {
+                                        } else {
                                                 registerCallbackResp.put("errorMessage", "Failed to register Callback");
 
-                                                socket.send(registerCallbackResp, (UUID) result.get("request_id"), service_id,
+                                                socket.send(registerCallbackResp, (UUID) result.get("request_id"),
+                                                                service_id,
                                                                 RequestType.ERROR, rawResult.getSenderIpAddress(),
                                                                 rawResult.getSenderPort());
                                         }
@@ -221,16 +239,18 @@ public class Main {
 
                                                 LOGGER.info("RESPONSE | CANCEL_BOOKING | Client: {} | Success: {}",
                                                                 clientInfo, cancelBookingSuccess);
-                                                
+
                                                 String facilityName = null;
-                                                for (Booking booking: bookingService.getAllBookings()) {
-                                                        if (booking.getConfirmationID().equals(result.get("confirmationID"))) {
+                                                for (Booking booking : bookingService.getAllBookings()) {
+                                                        if (booking.getConfirmationID()
+                                                                        .equals(result.get("confirmationID"))) {
                                                                 facilityName = booking.getFacilityName();
                                                                 break;
                                                         }
                                                 }
                                                 if (facilityName != null) {
-                                                        notifyCallbackClients(facilityName, bookingService, clients, socket);
+                                                        notifyCallbackClients(facilityName, bookingService, clients,
+                                                                        socket);
                                                 }
 
                                         } catch (Exception e) {
@@ -265,16 +285,18 @@ public class Main {
 
                                                 LOGGER.info("RESPONSE | EXTEND_BOOKING | Client: {} | Success: {}",
                                                                 clientInfo, extendBookingSuccess);
-                                                
+
                                                 String facilityName = null;
-                                                for (Booking booking: bookingService.getAllBookings()) {
-                                                        if (booking.getConfirmationID().equals(result.get("confirmationID"))) {
+                                                for (Booking booking : bookingService.getAllBookings()) {
+                                                        if (booking.getConfirmationID()
+                                                                        .equals(result.get("confirmationID"))) {
                                                                 facilityName = booking.getFacilityName();
                                                                 break;
                                                         }
                                                 }
                                                 if (facilityName != null) {
-                                                        notifyCallbackClients(facilityName, bookingService, clients, socket);
+                                                        notifyCallbackClients(facilityName, bookingService, clients,
+                                                                        socket);
                                                 }
                                         } catch (Exception e) {
                                                 extendBookingResp.put("errorMessage", e.getMessage());
