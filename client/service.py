@@ -289,7 +289,8 @@ while True:
             user_confirmation = safe_input(
                 "Do you want to switch the socket type? Press 1 to continue.", "int")
             if user_confirmation == 1:
-                request = SocketSwitchingReq(str(socket))
+                request = SocketSwitchingReq("AtMostOnceSocket" if isinstance(
+                    socket, AtLeastOnceSocket) else "AtLeastOnceSocket")
                 response, err = socket.send(
                     request, 8, RequestType.REQUEST)
                 if err is not None:
