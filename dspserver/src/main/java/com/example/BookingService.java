@@ -220,8 +220,6 @@ public class BookingService {
             // Check if the new time slot is available
             if (!facility.checkAvailability(booking.getTimeSlot())) {
                 // Revert the shift and re-add the original booking
-                booking.shiftBooking(-minuteOffset);
-                facility.addBooking(booking);
                 throw new IllegalStateException("New time slot is not available");
             }
             
@@ -229,6 +227,11 @@ public class BookingService {
             boolean added = facility.addBooking(booking);
             
             return added;
+        } catch(IllegalStateException | IllegalArgumentException e) {
+            // Restore the original time slot
+            booking.shiftBooking(-minuteOffset);
+            facility.addBooking(booking);
+            throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to edit booking: " + e.getMessage(), e);
         }
@@ -289,11 +292,6 @@ public class BookingService {
             
             // Check if the new time slot is available
             if (!facility.checkAvailability(booking.getTimeSlot())) {
-                // Restore the original time slot
-                booking.extendBooking(-additionalMinutes);
-                
-                // Re-add the original booking
-                facility.addBooking(booking);
                 throw new IllegalStateException("Cannot extend booking: new time slot is not available");
             }
             
@@ -303,6 +301,9 @@ public class BookingService {
             return added;
             
         } catch (IllegalStateException e) {
+            // Restore the original time slot
+            booking.extendBooking(-additionalMinutes);
+            facility.addBooking(booking);
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to extend booking: " + e.getMessage(), e);
