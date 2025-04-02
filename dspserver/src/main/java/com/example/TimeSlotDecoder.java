@@ -51,6 +51,12 @@ public class TimeSlotDecoder {
         this.durationMinutes = calculateDuration(start, end);
     }
 
+    public boolean endAfterStart() {
+        return startDay.getValue() < endDay.getValue() ||
+                (startDay.getValue() == endDay.getValue() && startHour < endHour) ||
+                (startDay.getValue() == endDay.getValue() && startHour == endHour && startMin < endMin);
+    }
+
     private String[] parseTimeSlot(String input) {
         String[] parts = input.split(" - ");
         if (parts.length != 2) {

@@ -227,7 +227,6 @@ public class Parser {
         for (FieldType field : dataFormat.fields) {
             writeField(buffer, field.name, field.type, message.getData());
         }
-
         return buffer.array();
     }
 
