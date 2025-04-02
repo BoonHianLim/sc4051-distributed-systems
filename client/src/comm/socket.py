@@ -13,22 +13,26 @@ logger = logging.getLogger(__name__)
 
 class Socket():
     def __init__(self):
-        self.loss_rate = 0.0  # Default loss rate
+        self.packet_to_be_lost = 0
         self.loss_type = SocketLostType.LOST_IN_CLIENT_TO_SERVER  # Default loss type
 
-    def set_loss_rate(self, loss_rate: float):
-        self.loss_rate = loss_rate
+    def set_packet_to_be_lost(self, count: int):
+        self.packet_to_be_lost = count
 
     def set_loss_type(self, loss_type: SocketLostType):
         self.loss_type = loss_type
 
     def has_lost(self, before_send_to_server: bool) -> bool:
-        if before_send_to_server and self.loss_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER:
-            return self.loss_rate > random.random()
-        elif not before_send_to_server and self.loss_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT:
-            return self.loss_rate > random.random()
-        elif self.loss_type == SocketLostType.MIXED:
-            return self.loss_rate > random.random()
+        if (before_send_to_server and self.loss_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER) \
+        or (not before_send_to_server and self.loss_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT) \
+        or (self.loss_type == SocketLostType.MIXED):
+            if self.packet_to_be_lost > 0:
+                self.packet_to_be_lost -= 1
+                logger.info("[Socket] Simulated packet loss")
+                return True
+            else:
+                logger.info("[Socket] No simulated packet loss")
+                return False
         return False
     
     def send(self, message: any, service_id: int, request_type: RequestType) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
@@ -39,6 +43,7 @@ class Socket():
 
     def non_blocking_listen(self):
         pass
+
 class AtLeastOnceSocket(Socket):
     def __str__(self):
         return "AtLeastOnceSocket"
@@ -81,6 +86,7 @@ class AtLeastOnceSocket(Socket):
         while result is None:
             request_lost = self.has_lost(True)
             if request_lost:
+                print("Packet lost in transit before sending to server.")
                 logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server")
             else:
                 self._clear_buffer()  # Clear the buffer before sending
@@ -91,7 +97,7 @@ class AtLeastOnceSocket(Socket):
             if result is None:
                 if request_lost:
                     logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server. Receive None as we never send the packet to server. Retrying,")
-                    print("Packet has lost in transit. Retrying...")
+                    print("Packet has lost in transit and we timeout. Retrying...")
                 else:
                     logger.error("[AtLeastOnceSocket] No response received. Timeout. Retrying...")
                 continue
@@ -100,6 +106,7 @@ class AtLeastOnceSocket(Socket):
                     "[AtLeastOnceSocket] Received response with different request ID: %s", result.request_id)
                 result = None
             if self.has_lost(False):
+                print("Packet lost in transit after sending to server.")
                 logger.info(
                     "[AtLeastOnceSocket] Simulated packet loss after sending to server")
                 result = None
@@ -201,6 +208,7 @@ class AtMostOnceSocket(Socket):
         while result is None:
             request_lost = self.has_lost(True)
             if request_lost:
+                print("Packet lost in transit before sending to server.")
                 logger.info(
                     "[AtMostOnceSocket] Simulated packet loss before sending to server")
             else:
@@ -212,7 +220,7 @@ class AtMostOnceSocket(Socket):
                 if request_lost:
                     logger.info(
                         "[AtLeastOnceSocket] Simulated packet loss before sending to server. Receive None as we never send the packet to server. Retrying,")
-                    print("Packet has lost in transit. Retrying...")
+                    print("Packet has lost in transit and we timeout. Retrying...")
                 else:
                     logger.error(
                         "[AtLeastOnceSocket] No response received. Timeout. Retrying...")
@@ -222,6 +230,7 @@ class AtMostOnceSocket(Socket):
                     "[AtMostOnceSocket] Received response with different request ID: %s", result.request_id)
                 result = None
             if self.has_lost(False):
+                print("Packet lost in transit after sending to server.")
                 logger.info(
                     "[AtMostOnceSocket] Simulated packet loss after sending to server")
                 result = None
