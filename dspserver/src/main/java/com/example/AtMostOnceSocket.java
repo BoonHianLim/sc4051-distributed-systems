@@ -76,8 +76,15 @@ public class AtMostOnceSocket extends CustomSocket {
                 
                 // Handle ACK messages
                 if (requestType == RequestType.ACK) {
-                    // Remove the corresponding entry from the history table
-                    historyTable.remove(requestId);
+                    // Check if there's an entry in the history table for this request ID
+                    ResponseInfo removedResponse = historyTable.remove(requestId);
+                    if (removedResponse != null) {
+                        System.out.println("AtMostOnceSocket: Received ACK for request ID " + requestId + 
+                                          " with service ID " + serviceId + " - Cleared from history table");
+                    } else {
+                        System.out.println("AtMostOnceSocket: Received ACK for request ID " + requestId + 
+                                          " with service ID " + serviceId + " - No entry found in history table");
+                    }
                     continue; // Continue waiting for non-ACK messages
                 }
                 
