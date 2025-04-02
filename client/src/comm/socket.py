@@ -128,7 +128,7 @@ class AtLeastOnceSocket(Socket):
     def non_blocking_listen(self) -> Optional[UnmarshalResult]:
         result = None
         try:
-            recv_bytes = self.socket.recv(4096, socket.MSG_DONTWAIT)
+            recv_bytes = self.socket.recv(4096)
             result = self.parser.unmarshall(recv_bytes)
         except error as e:
             err = e.args[0]
@@ -254,7 +254,7 @@ class AtMostOnceSocket(Socket):
     def non_blocking_listen(self) -> Optional[UnmarshalResult]:
         result = None
         try:
-            recv_bytes = self.socket.recv(4096, socket.MSG_DONTWAIT)
+            recv_bytes = self.socket.recv(4096)
             result = self.parser.unmarshall(recv_bytes)
         except timeout:
             pass
