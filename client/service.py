@@ -36,14 +36,11 @@ while socket is None:
     try:
         socket: Socket = AtLeastOnceSocket(parser, port=bind_port)
     except OSError as e:
-        if "Address already in use" in str(e) or "Only one usage" in str(e):
-            # Address is already in use, try again after 1 second
-            print(f"Receive error {e}. Port {bind_port} is already in use. Retrying...")
-            bind_port += 1
-            socket = None
-        else:
-            # Some other error occurred, raise it
-            raise e
+        # Address is already in use, try again after 1 second
+        print(f"Receive error {e} and failed to bind to port {bind_port}. Increment by 1 then retry...")
+        bind_port += 1
+        socket = None
+
     except Exception as e:
         # Some other error occurred, raise it
         raise e
@@ -327,7 +324,7 @@ while True:
             print()
         case BookingOptions.LOSE_PACKET:
             logger.info("User selected option 8: Modify Packet Loss Settings")
-            print(f"Current packet loss settings: {socket.loss_type.label()} with loss rate {socket.loss_rate}")
+            print(f"Current packet loss settings: {socket.loss_type.label()} with loss packet count {socket.packet_to_be_lost}")
             user_confirmation = safe_input(
                 "Do you want to modify the packet loss settings? Press 1 to continue.", "int")
             if user_confirmation == 1:
@@ -337,7 +334,7 @@ while True:
                     "Enter the number of packet(s) to be lost: (1 or more)", "int", min_val=1)
                 socket.loss_type = SocketLostType(loss_type)
                 socket.set_packet_to_be_lost(packet_to_be_lost)
-                print(f"Successfully changed packet loss settings to {socket.loss_type.label()} with loss rate {socket.loss_rate}")
+                print(f"Successfully changed packet loss settings to {socket.loss_type.label()} with to be lost packet count {socket.packet_to_be_lost}")
             else:
                 logger.info("User cancelled packet loss settings change.")
                 print("Operation cancelled.")

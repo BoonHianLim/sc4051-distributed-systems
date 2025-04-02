@@ -228,6 +228,15 @@ public class Main {
                                         Map<String, Object> cancelBookingResp = new HashMap<>();
 
                                         try {
+                                                String facilityName = null;
+                                                for (Booking booking : bookingService.getAllBookings()) {
+                                                        if (booking.getConfirmationID()
+                                                                        .equals(result.get("confirmationID"))) {
+                                                                facilityName = booking.getFacilityName();
+                                                                break;
+                                                        }
+                                                }
+
                                                 boolean cancelBookingSuccess = bookingService.cancelBooking(
                                                                 (String) result.get("confirmationID"));
                                                 cancelBookingResp.put("success", cancelBookingSuccess);
@@ -240,14 +249,6 @@ public class Main {
                                                 LOGGER.info("RESPONSE | CANCEL_BOOKING | Client: {} | Success: {}",
                                                                 clientInfo, cancelBookingSuccess);
 
-                                                String facilityName = null;
-                                                for (Booking booking : bookingService.getAllBookings()) {
-                                                        if (booking.getConfirmationID()
-                                                                        .equals(result.get("confirmationID"))) {
-                                                                facilityName = booking.getFacilityName();
-                                                                break;
-                                                        }
-                                                }
                                                 if (facilityName != null) {
                                                         notifyCallbackClients(facilityName, bookingService, clients,
                                                                         socket);

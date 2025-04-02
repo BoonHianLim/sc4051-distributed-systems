@@ -154,13 +154,13 @@ public class BookingService {
     public boolean cancelBooking(String confirmationId) {
         // Validate input
         if (confirmationId == null || confirmationId.isEmpty()) {
-            throw new IllegalArgumentException("Confirmation ID cannot be empty");
+            return true;
         }
 
         // Find the booking by confirmation ID
         Booking booking = findBookingByConfirmationId(confirmationId);
         if (booking == null) {
-            throw new IllegalArgumentException("Booking with confirmation ID '" + confirmationId + "' not found");
+            return true;
         }
 
         // Find the facility for this booking
@@ -169,7 +169,7 @@ public class BookingService {
                 .findFirst();
 
         if (facilityOpt.isEmpty()) {
-            throw new IllegalArgumentException("Facility for booking not found");
+            return true;
         }
 
         Facility facility = facilityOpt.get();
