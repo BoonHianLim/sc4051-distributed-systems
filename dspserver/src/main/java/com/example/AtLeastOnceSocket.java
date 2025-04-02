@@ -74,10 +74,13 @@ public class AtLeastOnceSocket extends CustomSocket {
             try {
                 DatagramPacket packet = receiveDatagram();
                 byte[] data = new byte[packet.getLength()];
+                System.out.println("Socket received packet of length " + packet.getLength());
                 System.arraycopy(packet.getData(), 0, data, 0, packet.getLength());
                 
                 // Parse the received message
                 Parser.Message message = parser.unmarshall(data);
+
+                System.out.println("Parsed AtLeastOnce message: serviceId = " + message.getServiceId() + " requestType=" + message.getRequestType() + " requestId=" + message.getRequestId() + " data=" + message.getData());
                 
                 // Convert to the expected response format
                 Map<String, Object> resultMap = new java.util.HashMap<>(message.getData());

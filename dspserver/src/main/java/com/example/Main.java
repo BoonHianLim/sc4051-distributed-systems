@@ -314,18 +314,97 @@ public class Main {
                                 case 8:
                                         String socketType = (String) result.get("switch");
                                         LOGGER.info("SWITCH_SOCKET | Type: {}", socketType);
-                                        // Implementation pending
-                                        LOGGER.warn("Socket switch implementation pending");
+
+                                        // Check for null socketType and handle it
+                                        if (socketType == null) {
+                                                LOGGER.error("SWITCH_SOCKET | socketType is null in the request");
+                                                Map<String, Object> errorResp = new HashMap<>();
+                                                errorResp.put("errorMessage", "Missing socket type in request");
+                                                socket.send(errorResp, (UUID) result.get("request_id"),
+                                                        service_id, RequestType.ERROR, rawResult.getSenderIpAddress(),
+                                                        rawResult.getSenderPort());
+                                                break;
+                                        }
+                                        
+                                        LOGGER.info("SWITCH_SOCKET | Type: {}", socketType);
+
+                                        // Close the current socket
+                                        socket.close();
+                                        LOGGER.info("Current socket closed");
+
+                                        Map<String, Object> socketResp = new HashMap<>();
+                                        boolean switchSuccess = false;
+
+                                        try {
+                                                // Create a new socket of the requested type
+                                            if (socketType.equals("AtLeastOnceSocket")) {
+                                                LOGGER.info("Creating AtLeastOnceSocket on port {}", PORT_NUMBER);
+                                                socket = new AtLeastOnceSocket(PORT_NUMBER);
+                                                socket.createServer();
+                                                LOGGER.info("AtLeastOnceSocket server started successfully");
+                                                switchSuccess = true;
+                                            }
+                                            else if (socketType.equals("AtMostOnceSocket")) {
+                                                LOGGER.info("Creating AtMostOnceSocket on port {}", PORT_NUMBER);
+                                                socket = new AtMostOnceSocket(PORT_NUMBER);
+                                                socket.createServer();
+                                                LOGGER.info("AtMostOnceSocket server started successfully");
+                                                switchSuccess = true;
+                                            }
+                                            else {
+                                                LOGGER.error("Unknown socket type: {}", socketType);
+                                                socketResp.put("errorMessage", "Unknown socket type: " + socketType);
+                                            }
+                                            
+                                            // Send response based on the success of the switch
+                                            if (switchSuccess) {
+                                                socketResp.put("message", true);
+                                                socket.send(socketResp, (UUID) result.get("request_id"),
+                                                        service_id,
+                                                        RequestType.RESPONSE, rawResult.getSenderIpAddress(),
+                                                        rawResult.getSenderPort());
+                                                LOGGER.info("RESPONSE | SWITCH_SOCKET | Client: {} | Switched to: {}",
+                                                        clientInfo, socketType);
+                                            } else {
+                                                socketResp.put("message", false);
+                                                socket.send(socketResp, (UUID) result.get("request_id"),
+                                                        service_id,
+                                                        RequestType.ERROR, rawResult.getSenderIpAddress(),
+                                                        rawResult.getSenderPort());
+                                                LOGGER.info("RESPONSE | SWITCH_SOCKET | Client: {} | Failed to switch", clientInfo);
+                                            }
+                                        } catch (Exception e) {
+                                                // Handle any exceptions during socket creation
+                                            LOGGER.error("Failed to switch socket: {}", e.getMessage());
+                                            socketResp.put("errorMessage", "Failed to switch socket: " + e.getMessage());
+                                            
+                                            // Try to recover by creating a default socket
+                                            try {
+                                                socket = new AtLeastOnceSocket(PORT_NUMBER);
+                                                socket.createServer();
+                                                LOGGER.info("Recovered with AtLeastOnceSocket");
+                                                
+                                                socket.send(socketResp, (UUID) result.get("request_id"),
+                                                        service_id,
+                                                        RequestType.ERROR, rawResult.getSenderIpAddress(),
+                                                        rawResult.getSenderPort());
+                                            } catch (Exception recoveryEx) {
+                                                LOGGER.error("Failed to recover: {}", recoveryEx.getMessage());
+                                                // Cannot continue without a valid socket
+                                                throw recoveryEx;
+                                            }
+                                        }
                                         break;
 
                                 case 9:
                                         LOGGER.warn("SHUTDOWN | Client: {}", clientInfo);
                                         socket.close();
                                         LOGGER.info("Server socket closed");
-                                        break;
+                                        return;
 
                                 default:
                                         LOGGER.error("UNKNOWN_SERVICE | ID: {} | Client: {}", service_id, clientInfo);
+                                        socket.close();
                                         break;
                         }
                 }

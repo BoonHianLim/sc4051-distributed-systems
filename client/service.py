@@ -38,7 +38,7 @@ while socket is None:
     except OSError as e:
         if "Address already in use" in str(e) or "Only one usage" in str(e):
             # Address is already in use, try again after 1 second
-            print(f"Port {bind_port} is already in use. Retrying...")
+            print(f"Receive error {e}. Port {bind_port} is already in use. Retrying...")
             bind_port += 1
             socket = None
         else:
