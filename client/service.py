@@ -335,10 +335,10 @@ while True:
             if user_confirmation == 1:
                 loss_type = safe_input(
                     "Enter the packet loss type (0 for lost in client to server, 1 for lost in server to client, 2 for mixed):", "int", min_val=0, max_val=2)
-                loss_rate = safe_input(
-                    "Enter the packet loss rate (0.0–1.0):", "float", min_val=0.0, max_val=1.0)
+                packet_to_be_lost = safe_input(
+                    "Enter the number of packet(s) to be lost: (1 or more)", "int", min_val=1)
                 socket.loss_type = SocketLostType(loss_type)
-                socket.loss_rate = loss_rate
+                socket.set_packet_to_be_lost(packet_to_be_lost)
                 print(f"Successfully changed packet loss settings to {socket.loss_type.label()} with loss rate {socket.loss_rate}")
             else:
                 logger.info("User cancelled packet loss settings change.")
