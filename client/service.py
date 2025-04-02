@@ -131,14 +131,12 @@ while True:
                 "Enter the start day (1–7, where 1 = Mon and 7 = Sun):", "int", min_val=1, max_val=7)
             start_hour = safe_input(
                 "Enter the start hour (0–23):", "int", min_val=0, max_val=23)
-            start_minute = safe_input(
-                "Enter the start minute (0–59):", "int", min_val=0, max_val=59)
             end_day = safe_input(
                 "Enter the end day (1–7, where 1 = Mon and 7 = Sun):", "int", min_val=1, max_val=7)
             end_hour = safe_input(
                 "Enter the end hour (0–23):", "int", min_val=0, max_val=23)
-            end_minute = safe_input(
-                "Enter the end minute (0–59):", "int", min_val=0, max_val=59)
+            start_minute = 0
+            end_minute = 0
             time_slot = f"{DAYS_STR[start_day - 1]},{start_hour},{start_minute} - {DAYS_STR[end_day - 1]},{end_hour},{end_minute}"
             logger.info(
                 f"User entered: {facility_name} with time slot {time_slot}")
@@ -166,16 +164,16 @@ while True:
             logger.info("User selected option 3: Change a booking")
             confirmation_id = safe_input(
                 "Enter the confirmation ID of the booking you want to change:", "str")
-            minute_offset = safe_input(
-                "Enter the minute offset you want to change by:", "int", min_val=0)
+            hour_offset = safe_input(
+                "Enter the hour offset you want to change by:", "int", min_val=0)
             logger.info(
-                f"User entered: {confirmation_id}, {minute_offset}")
+                f"User entered: {confirmation_id}, {hour_offset}")
             user_confirmation = safe_input(
-                f"You have selected to change booking {confirmation_id} by {minute_offset} minutes. Press 1 to continue.", "int")
+                f"You have selected to change booking {confirmation_id} by {hour_offset} hour(s). Press 1 to continue.", "int")
             if user_confirmation == 1:
                 logger.info("User confirmed change.")
                 print("Sending change request...")
-                request = EditBookingReq(confirmation_id, minute_offset)
+                request = EditBookingReq(confirmation_id, hour_offset * 60)
                 response, err = socket.send(
                     request, 3,  RequestType.REQUEST)
                 if err is not None:
@@ -259,16 +257,16 @@ while True:
             logger.info("User selected option 6: Extend a booking")
             confirmation_id = safe_input(
                 "Enter the confirmation ID of the booking you want to extend:", "str")
-            minute_offset = safe_input(
-                "Enter the minute offset you want to extend by:", "int", min_val=0)
+            hour_offset = safe_input(
+                "Enter the hour offset you want to extend by:", "int", min_val=0)
             logger.info(
-                f"User entered: {confirmation_id}, {minute_offset}")
+                f"User entered: {confirmation_id}, {hour_offset}")
             user_confirmation = safe_input(
-                f"You have selected to extend booking {confirmation_id} by {minute_offset} minutes. Press 1 to continue.", "int")
+                f"You have selected to extend booking {confirmation_id} by {hour_offset} hour(s). Press 1 to continue.", "int")
             if user_confirmation == 1:
                 logger.info("User confirmed extend.")
                 print("Sending extend request...")
-                request = EditBookingReq(confirmation_id, minute_offset)
+                request = EditBookingReq(confirmation_id, hour_offset * 60)
                 response, err = socket.send(
                     request, 7, RequestType.REQUEST)
                 if err is not None:
