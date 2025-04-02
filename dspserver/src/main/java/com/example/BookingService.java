@@ -124,6 +124,9 @@ public class BookingService {
         if (timeSlotDecoder.getEndHour() == 20 && timeSlotDecoder.getEndMin() > 0 || timeSlotDecoder.getEndHour() >= 21) {
             return "Error: Facility is not available after 8 PM";
         }
+        if (!timeSlotDecoder.endAfterStart()) {
+            return "Error: End time must be after start time";
+        }
 
         try {
             // Create a new booking
