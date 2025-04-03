@@ -1,198 +1,284 @@
+import errno
 import logging
-from socket import AF_INET, SOCK_DGRAM, socket, timeout
-import threading
-import time
+import random
+from socket import AF_INET, SOCK_DGRAM, socket, timeout, error
+from typing import Optional, Union
 from uuid import uuid4
+
+from src.comm.types import BaseModel, ErrorObj, RequestType, SocketLostType, UnmarshalResult
 from src.comm.parser import Parser
 
 logger = logging.getLogger(__name__)
 
+
 class Socket():
     def __init__(self):
-        pass
+        self.packet_to_be_lost = 0
+        self.loss_type = SocketLostType.LOST_IN_CLIENT_TO_SERVER  # Default loss type
 
-    def send(self, message: any, service_id: int, is_request: bool) -> any:
+    def set_packet_to_be_lost(self, count: int):
+        self.packet_to_be_lost = count
+
+    def set_loss_type(self, loss_type: SocketLostType):
+        self.loss_type = loss_type
+
+    def has_lost(self, lost_type: SocketLostType) -> bool:
+        if (lost_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER and self.loss_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER) \
+                or (lost_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT and self.loss_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT) \
+                or (lost_type == SocketLostType.ACK and self.loss_type == SocketLostType.ACK):
+            if self.packet_to_be_lost > 0:
+                self.packet_to_be_lost -= 1
+                logger.info("[Socket] Simulated packet loss")
+                return True
+            else:
+                logger.info("[Socket] No simulated packet loss")
+                return False
+        return False
+    
+    def send(self, message: any, service_id: int, request_type: RequestType) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         pass
 
     def listen(self):
         pass
 
-class AtLeastOnceSocket(Socket):
-    buffer: list[dict] = []
-    shutdown_flag = False
-    listen_thread = None
+    def non_blocking_listen(self):
+        pass
 
+class AtLeastOnceSocket(Socket):
+    def __str__(self):
+        return "AtLeastOnceSocket"
+    
     def __init__(self, parser: Parser, timeout_seconds: int = 60, ip_addr: str = "127.0.0.1", port: int = 11999):
         super().__init__()
         self.parser = parser
         self.socket = socket(AF_INET, SOCK_DGRAM)
         self.timeout_seconds = timeout_seconds
-        self.addr = (ip_addr, port)
+        self.socket.settimeout(timeout_seconds)
+        addr = (ip_addr, port)
+        self.socket.bind(addr)
+        logger.info(
+            "[AtLeastOnceSocket] Socket created at %s:%s", ip_addr, port)
 
-    def send(self, message: any, service_id: int, is_request: bool, server_addr: str = "127.0.0.1", port: int = 12000) -> any:
+    def _clear_buffer(self):
+        logger.debug("[AtLeastOnceSocket] Clearing buffer")
+        self.socket.setblocking(False)
+        try:
+            while True:
+                data, addr = self.socket.recvfrom(4096)
+                logger.info(f"Cleared packet from {addr}: {data}")
+        except BlockingIOError:
+            # Buffer is empty
+            pass
+        finally:
+            self.socket.setblocking(True)  # Restore blocking mode
+            self.socket.settimeout(self.timeout_seconds)  # Restore timeout
+        logger.debug("[AtLeastOnceSocket] Buffer cleared")
+    
+    def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "127.0.0.1", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         request_id = uuid4()
+        logger.info("[AtLeastOnceSocket] To server %s:%s: Sending request %s: %s",
+                    server_addr, port, request_id, message)
         msg_in_bytes = self.parser.marshall(
-            request_id, service_id, is_request, message)
+            request_id, service_id, request_type, message)
 
         addr = (server_addr, port)
-        while True:
-            self.socket.sendto(msg_in_bytes, addr)
+        result = None
+        while result is None:
+            request_lost = self.has_lost(SocketLostType.LOST_IN_CLIENT_TO_SERVER)
+            if request_lost:
+                print("Packet lost in transit before sending to server.")
+                logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server")
+            else:
+                self._clear_buffer()  # Clear the buffer before sending
+                self.socket.sendto(msg_in_bytes, addr)
+            logger.debug(f"[AtLeastOnceSocket] Sent request.")
 
-            start_time = time.time()
-            # busy wait
-            while len(self.buffer) == 0:
-                if time.time() - start_time >= self.timeout_seconds:
-                    break
-                if self.shutdown_flag:
-                    raise ConnectionError("Socket is closed")
-                time.sleep(0.1)
-            success = len(self.buffer) >= 1
-            if success:
-                break
-        # assume that buffer elements will always be correctly parsed
-        obj = self.buffer.pop()
-
-        # clear buffer
-        self.buffer.clear()
-        return obj
-
-    def listen(self):
-        if self.listen_thread is not None:
-            return
-        self.socket.bind(self.addr)
-        self.shutdown_flag = False
-        self.listen_thread = threading.Thread(target=self._listen, daemon=True)
-        self.listen_thread.start()
-
-    def _listen(self):
-        while self.shutdown_flag is False:
-            recv_bytes = None
-            obj = None
-            try:
-                recv_bytes, _ = self.socket.recvfrom(1024)
-                obj = self.parser.unmarshall(recv_bytes)
-                if obj["is_request"]:
-                    # We received a request, since we are client, that means a callback.
-                    # TODO: Handle the callback here.
-
-                    # For testing purpose, add to buffer first.
-                    # TODO: To remove the following line.
-                    self.buffer.append(obj)
+            result = self.listen()
+            if result is None:
+                if request_lost:
+                    logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server. Receive None as we never send the packet to server. Retrying,")
+                    print("Packet has lost in transit and we timeout. Retrying...")
                 else:
-                    self.buffer.append(obj)
-            except timeout:
-                logger.error("Socket timeout error")
-            except OSError as os_error:
-                if self.shutdown_flag:
-                    logger.debug("Socket closed, mostly due to shutdown.")
-                else:
-                    logger.error("Socket error: %s", os_error)
+                    logger.error("[AtLeastOnceSocket] No response received. Timeout. Retrying...")
+                continue
+            if result.request_id != request_id:
+                logger.error(
+                    "[AtLeastOnceSocket] Received response with different request ID: %s", result.request_id)
+                result = None
+            if self.has_lost(SocketLostType.LOST_IN_SERVER_TO_CLIENT):
+                print("Packet lost in transit after sending to server.")
+                logger.info(
+                    "[AtLeastOnceSocket] Simulated packet loss after sending to server")
+                result = None
+
+        if result.request_type == RequestType.ERROR:
+            logger.error("[AtLeastOnceSocket] Error: %s", result.obj)
+            assert isinstance(
+                result.obj, ErrorObj), "Error object is not of type ErrorObj"
+            return None, result.obj
+        return result.obj, None
+
+    def listen(self) -> Optional[UnmarshalResult]:
+        result = None
+        try:
+            recv_bytes, _ = self.socket.recvfrom(4096)
+            result = self.parser.unmarshall(recv_bytes)
+        except timeout:
+            logger.error("Socket timeout error")
+        except OSError as os_error:
+            logger.error("Socket error: %s", os_error)
+        except Exception as e:
+            logger.error("Error: %s", e)
+        finally:
+            return result
+
+    def non_blocking_listen(self) -> Optional[UnmarshalResult]:
+        result = None
+        try:
+            recv_bytes = self.socket.recv(4096)
+            result = self.parser.unmarshall(recv_bytes)
+        except error as e:
+            err = e.args[0]
+            if err == errno.EAGAIN or err == errno.EWOULDBLOCK:
+                # No data available to read, continue without error
+                pass
+            else:
+                logger.error("Socket error: %s", e)
+        except timeout:
+            pass
+        except OSError as os_error:
+            logger.error("Socket error: %s", os_error)
+        except Exception as e:
+            logger.error("Error: %s", e)
+        finally:
+            return result
 
     def close(self):
-        if self.listen_thread is not None:
-            self.shutdown_flag = True
-            self.socket.close()
-            self.listen_thread.join()
-        # clean up
-        self.listen_thread = None
-        self.shutdown_flag = False
+        self.socket.close()
 
-# work on this (wei)
+
 class AtMostOnceSocket(Socket):
     # High level requirements
     # 1. Client re-transmits requests
-        # Occurs when client does not receive a response in time, basically timeout
+    # Occurs when client does not receive a response in time, basically timeout
     # 2. Server filter duplicates
     # 3. Client sends ACK
-        # After client gets valid response, it sends an ACK to the server
-        # Server stops re-sending response once it receives ACK or max attempts
+    # After client gets valid response, it sends an ACK to the server
+    # Server stops re-sending response once it receives ACK or max attempts
 
-    buffer: list[dict] = []
-    shutdown_flag = False
-    listen_thread = None
-
+    def __str__(self):
+        return "AtMostOnceSocket"
+    
     def __init__(self, parser: Parser, timeout_seconds: int = 60,
                  ip_addr: str = "127.0.0.1", port: int = 11999):
         super().__init__()
         self.parser = parser
         self.socket = socket(AF_INET, SOCK_DGRAM)
         self.timeout_seconds = timeout_seconds
-        self.addr = (ip_addr, port)
+        self.socket.settimeout(timeout_seconds)
+        addr = (ip_addr, port)
+        self.socket.bind(addr)
+        logger.info("[AtMostOnceSocket] Socket created at %s:%s",
+                    ip_addr, port)
 
-    def send(self, message: any, service_id: int, is_request: bool,
-             server_addr: str = "127.0.0.1", port: int = 12000) -> any:
-        request_id = uuid4()
-        msg_in_bytes = self.parser.marshall(request_id, service_id, is_request, message)
-        addr = (server_addr, port)
-
-        while True:
-            # (a) send request
-            self.socket.sendto(msg_in_bytes, addr)
-            logger.debug(f"[AtMostOnceSocket] Sent request {request_id}")
-            print(f"[AtMostOnceSocket] Sent request {request_id}")
-
-            # (b) wait time out secs for response to appear in buffer
-            start_time = time.time()
+    def _clear_buffer(self):
+        logger.debug("[AtMostOnceSocket] Clearing buffer")
+        self.socket.setblocking(False)
+        try:
             while True:
-                # break if no response after timeout
-                if time.time() - start_time >= self.timeout_seconds:
-                    break
-                if self.shutdown_flag:
-                    raise ConnectionError("Socket is closed")     
-                # check if we have anything in buffer
-                if len(self.buffer) > 0:
-                    obj = self.buffer.pop()
-                    if obj["request_id"] == request_id:
-                        logger.debug(f"[AtMostOnceSocket] Received matching response for {request_id}")
-                        print(f"[AtMostOnceSocket] Received matching response for {request_id}")
+                data, addr = self.socket.recvfrom(4096)
+                logger.info(f"Cleared packet from {addr}: {data}")
+        except BlockingIOError:
+            # Buffer is empty
+            pass
+        finally:
+            self.socket.setblocking(True)
+            self.socket.settimeout(self.timeout_seconds)  # Restore timeout
+        logger.debug("[AtMostOnceSocket] Buffer cleared")
 
-                        # (c) Send ACK to server
-                        ack_bytes = self.parser.marshall_ack(request_id)
-                        self.socket.sendto(ack_bytes, addr)
-                        logger.debug(f"sent ACK for {request_id}")
-                        print(f"sent ACK for {request_id}")
-                        # Return the object
-                        return obj
-                    else:
-                        # Not the correct response => ignore
-                        logger.debug(f"[AtMostOnceSocket] Ignoring unrelated response: {obj['request_id']}")
-                        print(f"[AtMostOnceSocket] Ignoring unrelated response: {obj['request_id']}")
-                time.sleep(0.1)
-
-            # If we reach here, no matching response arrived => re-send
-            logger.debug("[AtMostOnceSocket] No matching response, re-sending request...")
-            print("[AtMostOnceSocket] Timeout, re-sending request...")
-
-    def listen(self):
-        # to bind socket to self.addr, while continuously receving packets
-        if self.listen_thread is not None:
-            return  
-        self.socket.bind(self.addr)
-        self.shutdown_flag = False
-        self.listen_thread = threading.Thread(target=self._listen, daemon=True)
-        self.listen_thread.start()
-
-    def _listen(self):
-        while not self.shutdown_flag:
-            try:
-                recv_bytes, _ = self.socket.recvfrom(1024)
-                obj = self.parser.unmarshall(recv_bytes)
-                self.buffer.append(obj)
-            except timeout:
-                logger.error("[AtMostOnceSocket] Socket timeout in listen thread")
-            except OSError as os_err:
-                if self.shutdown_flag:
-                    logger.debug("[AtMostOnceSocket] Socket closed due to shutdown.")
+    def send(self, message: any, service_id: int, request_type: RequestType,
+             server_addr: str = "127.0.0.1", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
+        request_id = uuid4()
+        logger.info("[AtMostOnceSocket] To server %s:%s: Sending request %s: %s",
+                    server_addr, port, request_id, message)
+        msg_in_bytes = self.parser.marshall(
+            request_id, service_id, request_type, message)
+        addr = (server_addr, port)
+        result = None
+        while result is None:
+            request_lost = self.has_lost(SocketLostType.LOST_IN_CLIENT_TO_SERVER)
+            if request_lost:
+                print("Packet lost in transit before sending to server.")
+                logger.info(
+                    "[AtMostOnceSocket] Simulated packet loss before sending to server")
+            else:
+                self._clear_buffer()  # Clear the buffer before sending
+                self.socket.sendto(msg_in_bytes, addr)
+            logger.debug(f"[AtMostOnceSocket] Sent request.")
+            result = self.listen()
+            if result is None:
+                if request_lost:
+                    logger.info(
+                        "[AtLeastOnceSocket] Simulated packet loss before sending to server. Receive None as we never send the packet to server. Retrying,")
+                    print("Packet has lost in transit and we timeout. Retrying...")
                 else:
-                    logger.error("[AtMostOnceSocket] Socket error: %s", os_err)
-                break
-    
+                    logger.error(
+                        "[AtLeastOnceSocket] No response received. Timeout. Retrying...")
+                continue
+            if result.request_id != request_id:
+                logger.error(
+                    "[AtMostOnceSocket] Received response with different request ID: %s", result.request_id)
+                result = None
+            if self.has_lost(SocketLostType.LOST_IN_SERVER_TO_CLIENT):
+                print("Packet lost in transit after sending to server.")
+                logger.info(
+                    "[AtMostOnceSocket] Simulated packet loss after sending to server")
+                result = None
+
+        if self.has_lost(SocketLostType.ACK):
+            print("ACK packet lost in transit.")
+            logger.info(
+                "[AtMostOnceSocket] Simulated ACK packet loss in transit")
+        else:
+            ack_packet_in_bytes = self.parser.marshall(
+                request_id, service_id, RequestType.ACK, None)
+            self.socket.sendto(ack_packet_in_bytes, addr)
+
+        if result.request_type == RequestType.ERROR:
+            logger.error("[AtMostOnceSocket] Error: %s", result.obj)
+            assert isinstance(
+                result.obj, ErrorObj), "Error object is not of type ErrorObj"
+            return None, result.obj
+        return result.obj, None
+
+    def listen(self) -> Optional[UnmarshalResult]:
+        result = None
+        try:
+            recv_bytes, _ = self.socket.recvfrom(4096)
+            result = self.parser.unmarshall(recv_bytes)
+        except timeout:
+            logger.error("Socket timeout error")
+        except OSError as os_error:
+            logger.error("Socket error: %s", os_error)
+        except Exception as e:
+            logger.error("Error: %s", e)
+        finally:
+            return result
+
+    def non_blocking_listen(self) -> Optional[UnmarshalResult]:
+        result = None
+        try:
+            recv_bytes = self.socket.recv(4096)
+            result = self.parser.unmarshall(recv_bytes)
+        except timeout:
+            pass
+        except OSError as os_error:
+            logger.error("Socket error: %s", os_error)
+        except Exception as e:
+            logger.error("Error: %s", e)
+        finally:
+            return result
+        
     def close(self):
         # shut socket down
-        if self.listen_thread is not None:
-            self.shutdown_flag = True
-            self.socket.close()
-            self.listen_thread.join()
-
-        self.listen_thread = None
-        self.shutdown_flag = False
+        self.socket.close()

@@ -2,7 +2,7 @@ import struct
 from uuid import UUID
 import uuid
 
-from src.comm.object import BaseModel
+from src.comm.types import ACKObj, BaseModel, ErrorObj, RequestType, UnmarshalResult
 
 
 class Parser():
@@ -35,7 +35,10 @@ class Parser():
             self.services[obj_id]['request'] = obj['request']
             self.services[obj_id]['response'] = obj['response']
 
-    def unmarshall(self, recv_bytes: bytes) -> dict:
+    def get_request_type(self, receive_byte: int) -> RequestType:
+        return RequestType(receive_byte)
+
+    def unmarshall(self, recv_bytes: bytes) -> UnmarshalResult:
         """
         Unmarshalls the received bytes into a dictionary object based on the specified object name.
         Args:
@@ -47,15 +50,41 @@ class Parser():
             KeyError: If the obj_name is not found in the data format.
             struct.error: If there is an error unpacking the float value.
         """
-
-        obj = {}
         request_id = uuid.UUID(bytes=recv_bytes[:16])
 
         service_id = int.from_bytes(recv_bytes[16:18], byteorder='big')
 
-        is_request = recv_bytes[18] == 0
+        request_type = self.get_request_type(recv_bytes[18])
+        if request_type == RequestType.REQUEST or request_type == RequestType.RESPONSE:
+            return self._unmarshal_normal(recv_bytes, request_id, service_id, request_type)
+        elif request_type == RequestType.ERROR:
+            return self._unmarshal_error(recv_bytes, request_id, service_id)
+        elif request_type == RequestType.ACK:
+            return self._unmarshal_ack(request_id, service_id)
+
+    def _unmarshal_error(self, recv_bytes: bytes, request_id: uuid.UUID, service_id: int) -> UnmarshalResult:
+        error_message = recv_bytes[19:].decode("utf-8")
+        return UnmarshalResult(ErrorObj(error_message), request_id, service_id, RequestType.ERROR)
+
+    def _unmarshal_normal(self, recv_bytes: bytes, request_id: uuid.UUID, service_id: int, request_type: RequestType) -> UnmarshalResult:
         data_format = self.data[self.services[service_id]
-                                ["request" if is_request else "response"]]
+                                [request_type.label()]]
+
+        class_name = data_format["name"]
+        available_classes = {
+            cls.obj_name: cls for cls in BaseModel.__subclasses__() if cls.obj_name}
+        if class_name not in available_classes:
+            raise ValueError(f"Class {class_name} not found")
+
+        obj = available_classes[class_name]()
+
+        class_name = data_format["name"]
+        available_classes = {
+            cls.obj_name: cls for cls in BaseModel.__subclasses__() if cls.obj_name}
+        if class_name not in available_classes:
+            raise ValueError(f"Class {class_name} not found")
+
+        obj = available_classes[class_name]()
 
         bytes_ptr = 19
         fields = data_format["fields"]
@@ -87,12 +116,12 @@ class Parser():
                     obj[field_name] = _value
                     bytes_ptr += 1
             fields_ptr += 1
-        obj["request_id"] = request_id
-        obj["service_id"] = service_id 
-        obj["is_request"] = is_request
-        return obj
+        return UnmarshalResult(obj, request_id, service_id, request_type)
 
-    def marshall(self, request_id: UUID, service_id: int, is_request: bool, item: BaseModel) -> bytes:
+    def _unmarshal_ack(self, request_id: uuid.UUID, service_id: int) -> UnmarshalResult:
+        return UnmarshalResult(ACKObj(), request_id, service_id, RequestType.ACK)
+
+    def marshall(self, request_id: UUID, service_id: int, request_type: RequestType, item: BaseModel) -> bytes:
         """
         Marshalls the given object into a byte stream according to the specified format.
         Args:
@@ -103,7 +132,20 @@ class Parser():
         Returns:
             bytes: The marshalled byte stream representing the object.
         """
+        if request_type == RequestType.ERROR:
+            return self._marshal_error(request_id, service_id, item)
+        elif request_type == RequestType.REQUEST or request_type == RequestType.RESPONSE:
+            return self._marshal_normal(request_id, service_id, request_type, item)
+        elif request_type == RequestType.ACK:
+            return self._marshal_ack(request_id, service_id)
+        else:
+            raise ValueError("Invalid request type")
 
+    def _marshal_error(self, request_id: UUID, service_id: int, item: ErrorObj) -> bytes:
+        error_message = item.errorMessage.encode("utf-8")
+        return request_id.bytes + service_id.to_bytes(2, byteorder='big') + RequestType.ERROR.to_bytes(1, byteorder='big') + error_message
+
+    def _marshal_normal(self, request_id: UUID, service_id: int, request_type: RequestType, item: BaseModel) -> bytes:
         data_format = self.data[item.obj_name]
 
         fields = data_format['fields']
@@ -111,7 +153,7 @@ class Parser():
 
         generated_bytes = request_id.bytes
         generated_bytes += service_id.to_bytes(2, byteorder='big')
-        generated_bytes += (0 if is_request else 1).to_bytes(1, byteorder='big')
+        generated_bytes += request_type.to_bytes(1, byteorder='big')
 
         while fields_ptr < len(fields):
             field_name, field_type = fields[fields_ptr]
@@ -126,6 +168,10 @@ class Parser():
                 case "float":
                     generated_bytes += struct.pack(">f", item[field_name])
                 case "bool":
-                    generated_bytes += (1 if item[field_name] else 0).to_bytes(1, byteorder='big')
+                    generated_bytes += (1 if item[field_name]
+                                        else 0).to_bytes(1, byteorder='big')
             fields_ptr += 1
         return generated_bytes
+
+    def _marshal_ack(self, request_id: UUID, service_id: int) -> bytes:
+        return request_id.bytes + service_id.to_bytes(2, byteorder='big') + RequestType.ACK.to_bytes(1, byteorder='big')

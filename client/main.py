@@ -3,8 +3,8 @@ import logging
 import os
 import time
 from uuid import uuid4
-from src.comm.object import BaseModel
-from src.comm.socket import Socket, AtLeastOnceSocket
+from src.comm.types import BaseModel
+from src.comm.socket import AtMostOnceSocket, Socket, AtLeastOnceSocket
 from src.comm.parser import Parser
 from src.utils.logger import setup_logger
 
@@ -27,24 +27,23 @@ with open(services_path, "r", encoding="utf-8") as f:
     services_schema = json.load(f)
 parser: Parser = Parser(interface_schema, services_schema)
 socket: Socket
-class Person(BaseModel):
-    obj_name = "Person"
-    def __init__(self, name: str = "", age: int = 0, height: float = 0.0, is_singaporean: bool = True):    
+
+
+class BookFacilityReq(BaseModel):
+    obj_name = "BookFacilityReq"
+    def __init__(self, facility_name: str, timeSlot: str):    
         super().__init__()
-        self.name = name
-        self.age = age
-        self.height = height
-        self.is_singaporean = is_singaporean
+        self.facilityName = facility_name
+        self.timeSlot = timeSlot
 
 at_least_once = True
 while True:
     if at_least_once:
         socket = AtLeastOnceSocket(parser)
     else:
-        socket = AtLeastOnceSocket(parser)
-    socket.listen()
+        socket = AtMostOnceSocket(parser)
     request_id = uuid4()
-    request = Person("Biboo", 18, 142, False)
+    request = BookFacilityReq("Library", "Mon,19,00 - Mon,20,00")
     response = socket.send(request, 1, True)
     logger.info(response)
     time.sleep(2)
