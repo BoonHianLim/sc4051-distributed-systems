@@ -329,7 +329,7 @@ while True:
                 "Do you want to modify the packet loss settings? Press 1 to continue.", "int")
             if user_confirmation == 1:
                 loss_type = safe_input(
-                    "Enter the packet loss type (0 for lost in client to server, 1 for lost in server to client, 2 for mixed):", "int", min_val=0, max_val=2)
+                    "Enter the packet loss type (0 for lost in client to server, 1 for lost in server to client, 2 for ack):", "int", min_val=0, max_val=2)
                 packet_to_be_lost = safe_input(
                     "Enter the number of packet(s) to be lost: (1 or more)", "int", min_val=1)
                 socket.loss_type = SocketLostType(loss_type)

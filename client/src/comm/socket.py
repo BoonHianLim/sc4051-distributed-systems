@@ -22,10 +22,10 @@ class Socket():
     def set_loss_type(self, loss_type: SocketLostType):
         self.loss_type = loss_type
 
-    def has_lost(self, before_send_to_server: bool) -> bool:
-        if (before_send_to_server and self.loss_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER) \
-        or (not before_send_to_server and self.loss_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT) \
-        or (self.loss_type == SocketLostType.MIXED):
+    def has_lost(self, lost_type: SocketLostType) -> bool:
+        if (lost_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER and self.loss_type == SocketLostType.LOST_IN_CLIENT_TO_SERVER) \
+                or (lost_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT and self.loss_type == SocketLostType.LOST_IN_SERVER_TO_CLIENT) \
+                or (lost_type == SocketLostType.ACK and self.loss_type == SocketLostType.ACK):
             if self.packet_to_be_lost > 0:
                 self.packet_to_be_lost -= 1
                 logger.info("[Socket] Simulated packet loss")
@@ -84,7 +84,7 @@ class AtLeastOnceSocket(Socket):
         addr = (server_addr, port)
         result = None
         while result is None:
-            request_lost = self.has_lost(True)
+            request_lost = self.has_lost(SocketLostType.LOST_IN_CLIENT_TO_SERVER)
             if request_lost:
                 print("Packet lost in transit before sending to server.")
                 logger.info("[AtLeastOnceSocket] Simulated packet loss before sending to server")
@@ -105,7 +105,7 @@ class AtLeastOnceSocket(Socket):
                 logger.error(
                     "[AtLeastOnceSocket] Received response with different request ID: %s", result.request_id)
                 result = None
-            if self.has_lost(False):
+            if self.has_lost(SocketLostType.LOST_IN_SERVER_TO_CLIENT):
                 print("Packet lost in transit after sending to server.")
                 logger.info(
                     "[AtLeastOnceSocket] Simulated packet loss after sending to server")
@@ -206,7 +206,7 @@ class AtMostOnceSocket(Socket):
         addr = (server_addr, port)
         result = None
         while result is None:
-            request_lost = self.has_lost(True)
+            request_lost = self.has_lost(SocketLostType.LOST_IN_CLIENT_TO_SERVER)
             if request_lost:
                 print("Packet lost in transit before sending to server.")
                 logger.info(
@@ -229,15 +229,20 @@ class AtMostOnceSocket(Socket):
                 logger.error(
                     "[AtMostOnceSocket] Received response with different request ID: %s", result.request_id)
                 result = None
-            if self.has_lost(False):
+            if self.has_lost(SocketLostType.LOST_IN_SERVER_TO_CLIENT):
                 print("Packet lost in transit after sending to server.")
                 logger.info(
                     "[AtMostOnceSocket] Simulated packet loss after sending to server")
                 result = None
 
-        ack_packet_in_bytes = self.parser.marshall(
-            request_id, service_id, RequestType.ACK, None)
-        self.socket.sendto(ack_packet_in_bytes, addr)
+        if self.has_lost(SocketLostType.ACK):
+            print("ACK packet lost in transit.")
+            logger.info(
+                "[AtMostOnceSocket] Simulated ACK packet loss in transit")
+        else:
+            ack_packet_in_bytes = self.parser.marshall(
+                request_id, service_id, RequestType.ACK, None)
+            self.socket.sendto(ack_packet_in_bytes, addr)
 
         if result.request_type == RequestType.ERROR:
             logger.error("[AtMostOnceSocket] Error: %s", result.obj)
