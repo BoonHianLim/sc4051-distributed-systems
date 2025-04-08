@@ -48,7 +48,7 @@ class AtLeastOnceSocket(Socket):
     def __str__(self):
         return "AtLeastOnceSocket"
     
-    def __init__(self, parser: Parser, timeout_seconds: int = 60, ip_addr: str = "127.0.0.1", port: int = 11999):
+    def __init__(self, parser: Parser, timeout_seconds: int = 60, ip_addr: str = "0.0.0.0", port: int = 11999):
         super().__init__()
         self.parser = parser
         self.socket = socket(AF_INET, SOCK_DGRAM)
@@ -74,7 +74,7 @@ class AtLeastOnceSocket(Socket):
             self.socket.settimeout(self.timeout_seconds)  # Restore timeout
         logger.debug("[AtLeastOnceSocket] Buffer cleared")
     
-    def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "127.0.0.1", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
+    def send(self, message: any, service_id: int, request_type: RequestType, server_addr: str = "172.20.10.5", port: int = 12000) -> Union[tuple[BaseModel, None], tuple[None, ErrorObj]]:
         request_id = uuid4()
         logger.info("[AtLeastOnceSocket] To server %s:%s: Sending request %s: %s",
                     server_addr, port, request_id, message)
@@ -170,7 +170,7 @@ class AtMostOnceSocket(Socket):
         return "AtMostOnceSocket"
     
     def __init__(self, parser: Parser, timeout_seconds: int = 60,
-                 ip_addr: str = "127.0.0.1", port: int = 11999):
+                 ip_addr: str = "0.0.0.0", port: int = 11999):
         super().__init__()
         self.parser = parser
         self.socket = socket(AF_INET, SOCK_DGRAM)
