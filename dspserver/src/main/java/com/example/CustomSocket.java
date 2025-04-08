@@ -6,6 +6,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
+import java.net.UnknownHostException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -55,7 +56,14 @@ public abstract class CustomSocket implements AutoCloseable {
      * @throws SocketException If the socket cannot be created
      */
     public void createServer() throws SocketException {
-        this.socket = new DatagramSocket(portNumber);
+        try {
+            this.socket = new DatagramSocket(portNumber, InetAddress.getByName("0.0.0.0"));
+            System.out.println(this.socket.getLocalAddress());
+            System.out.println(this.socket.getLocalPort());
+        } catch (UnknownHostException e) {
+            this.socket = new DatagramSocket(portNumber, null);
+        }
+
     }
 
     /**
@@ -160,7 +168,8 @@ public abstract class CustomSocket implements AutoCloseable {
      * @return A Parser.Message object ready for marshalling
      * @throws Exception If the service ID is not found or the format is invalid
      */
-    protected Parser.Message createMessage(Map<String, Object> data, int serviceId, UUID requestId, RequestType requestType)
+    protected Parser.Message createMessage(Map<String, Object> data, int serviceId, UUID requestId,
+            RequestType requestType)
             throws Exception {
         List<Map<String, Object>> servicesSchema = loadJSONSchema("services.json");
 
@@ -176,13 +185,13 @@ public abstract class CustomSocket implements AutoCloseable {
         } else if (requestType == RequestType.ERROR) {
             formatName = "error";
         } else if (requestType == RequestType.ACK) {
-            formatName = "ACK"; 
+            formatName = "ACK";
         }
 
         if (formatName == null) {
             throw new IllegalArgumentException("Service ID not found: " + serviceId);
         }
-        
+
         // Remove metadata fields that aren't part of the actual payload
         Map<String, Object> payloadData = new java.util.HashMap<>(data);
         payloadData.remove("request_id");
